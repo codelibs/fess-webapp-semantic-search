@@ -29,11 +29,14 @@ import org.apache.logging.log4j.Logger;
 import org.codelibs.core.lang.StringUtil;
 import org.codelibs.fess.Constants;
 import org.codelibs.fess.es.client.SearchEngineClient;
+import org.codelibs.fess.query.parser.QueryParser;
 import org.codelibs.fess.util.ComponentUtil;
 import org.codelibs.fess.webapp.semantic_search.index.query.NeuralQueryBuilder;
 import org.dbflute.optional.OptionalThing;
 import org.lastaflute.web.util.LaRequestUtil;
 import org.opensearch.index.query.QueryBuilder;
+
+import com.google.common.base.CharMatcher;
 
 public class SemanticSearchHelper {
     private static final Logger logger = LogManager.getLogger(SemanticSearchHelper.class);
@@ -72,6 +75,31 @@ public class SemanticSearchHelper {
                     + "},\n" //
                     + "\"content\":");
         });
+
+        QueryParser queryParser = ComponentUtil.getQueryParser();
+        queryParser.addFilter((query, chain) -> chain.parse(rewriteQuery(query)));
+    }
+
+    protected String rewriteQuery(final String query) {
+        if (StringUtil.isBlank(query)) {
+            return query;
+        }
+
+        if (query.indexOf('"') != -1) {
+            return query;
+        }
+
+        if (!CharMatcher.whitespace().matchesAnyOf(query)) {
+            return query;
+        }
+
+        for (final String field : ComponentUtil.getQueryFieldConfig().getSearchFields()) {
+            if (query.indexOf(field + ":") != -1) {
+                return query;
+            }
+        }
+
+        return "\"" + query + "\"";
     }
 
     public OptionalThing<QueryBuilder> newNeuralQueryBuilder(final String text) {

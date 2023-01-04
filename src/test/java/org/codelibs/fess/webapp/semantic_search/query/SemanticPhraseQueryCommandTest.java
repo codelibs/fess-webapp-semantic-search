@@ -30,10 +30,10 @@ import org.codelibs.fess.webapp.semantic_search.helper.SemanticSearchHelper;
 import org.dbflute.utflute.lastadi.LastaDiTestCase;
 import org.opensearch.index.query.QueryBuilder;
 
-public class SemanticTermQueryCommandTest extends LastaDiTestCase {
-    private static final Logger logger = LogManager.getLogger(SemanticTermQueryCommandTest.class);
+public class SemanticPhraseQueryCommandTest extends LastaDiTestCase {
+    private static final Logger logger = LogManager.getLogger(SemanticPhraseQueryCommandTest.class);
 
-    private SemanticTermQueryCommand queryCommand;
+    private SemanticPhraseQueryCommand queryCommand;
 
     @Override
     protected String prepareConfigFile() {
@@ -62,7 +62,7 @@ public class SemanticTermQueryCommandTest extends LastaDiTestCase {
         semanticSearchHelper.init();
         ComponentUtil.register(semanticSearchHelper, "semanticSearchHelper");
 
-        queryCommand = new SemanticTermQueryCommand();
+        queryCommand = new SemanticPhraseQueryCommand();
     }
 
     @Override
@@ -73,14 +73,18 @@ public class SemanticTermQueryCommandTest extends LastaDiTestCase {
 
     public void test_execute() throws Exception {
         assertQueryBuilder(
-                "{\"bool\":{\"should\":[{\"match_phrase\":{\"title\":{\"query\":\"fess\",\"slop\":0,\"zero_terms_query\":\"NONE\",\"boost\":0.5}}},{\"match_phrase\":{\"content\":{\"query\":\"fess\",\"slop\":0,\"zero_terms_query\":\"NONE\",\"boost\":0.05}}},{\"fuzzy\":{\"title\":{\"value\":\"fess\",\"fuzziness\":\"AUTO\",\"prefix_length\":0,\"max_expansions\":10,\"transpositions\":true,\"boost\":0.01}}},{\"fuzzy\":{\"content\":{\"value\":\"fess\",\"fuzziness\":\"AUTO\",\"prefix_length\":0,\"max_expansions\":10,\"transpositions\":true,\"boost\":0.005}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}",
-                "fess");
+                "{\"bool\":{\"should\":[{\"match_phrase\":{\"title\":{\"query\":\"ThisisFess.\",\"slop\":0,\"zero_terms_query\":\"NONE\",\"boost\":0.5}}},{\"match_phrase\":{\"content\":{\"query\":\"ThisisFess.\",\"slop\":0,\"zero_terms_query\":\"NONE\",\"boost\":0.05}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}",
+                "\"This is Fess.\"");
 
         System.setProperty(CONTENT_MODEL_ID, "modelx");
         System.setProperty(CONTENT_FIELD, "content_vector");
 
-        assertQueryBuilder("{\"neural\":{\"content_vector\":{\"query_text\":\"fess\",\"model_id\":\"modelx\",\"k\":20,\"boost\":1.0}}}",
-                "fess");
+        assertQueryBuilder(
+                "{\"neural\":{\"content_vector\":{\"query_text\":\"ThisisFess.\",\"model_id\":\"modelx\",\"k\":20,\"boost\":1.0}}}",
+                "This is Fess.");
+        assertQueryBuilder(
+                "{\"neural\":{\"content_vector\":{\"query_text\":\"ThisisFess.\",\"model_id\":\"modelx\",\"k\":20,\"boost\":1.0}}}",
+                "\"This is Fess.\"");
     }
 
     private void assertQueryBuilder(final String expect, final String text) throws Exception {
