@@ -15,14 +15,17 @@
  */
 package org.codelibs.fess.webapp.semantic_search.helper;
 
-import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.KNN_VECTOR_DIMENSION;
-import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.KNN_VECTOR_ENGINE;
-import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.KNN_VECTOR_FIELD;
-import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.KNN_VECTOR_METHOD;
-import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.MODEL_ID;
+import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_DIMENSION;
+import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_ENGINE;
+import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_FIELD;
+import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_METHOD;
+import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_MODEL_ID;
+import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.PIPELINE;
 
 import javax.annotation.PostConstruct;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.codelibs.core.lang.StringUtil;
 import org.codelibs.fess.Constants;
 import org.codelibs.fess.es.client.SearchEngineClient;
@@ -33,17 +36,32 @@ import org.lastaflute.web.util.LaRequestUtil;
 import org.opensearch.index.query.QueryBuilder;
 
 public class SemanticSearchHelper {
+    private static final Logger logger = LogManager.getLogger(SemanticSearchHelper.class);
 
     @PostConstruct
     public void init() {
         final SearchEngineClient client = ComponentUtil.getSearchEngineClient();
-        client.addDocumentSettingRewriteRule(s -> s.replace("\"index\":", "\"default_pipeline\": \"neural_pipeline\",\"index\":")
-                .replace("\"codec\":", "\"knn\": true,\"codec\":"));
+        client.addDocumentSettingRewriteRule(s -> {
+            final String pipeline = System.getProperty(PIPELINE); // ex. neural_pipeline
+            if (logger.isDebugEnabled()) {
+                logger.debug("pipeline: {}", pipeline);
+            }
+            if (StringUtil.isNotBlank(pipeline)) {
+                s = s.replace("\"index\":", "\"default_pipeline\": \"" + pipeline + "\",\"index\":");
+            }
+            return s.replace("\"codec\":", "\"knn\": true,\"codec\":");
+        });
         client.addDocumentMappingRewriteRule(s -> {
-            final String dimension = System.getProperty(KNN_VECTOR_DIMENSION); // ex. 384
-            final String field = System.getProperty(KNN_VECTOR_FIELD); // ex. content_vector
-            final String method = System.getProperty(KNN_VECTOR_METHOD); // ex. hnsw
-            final String engine = System.getProperty(KNN_VECTOR_ENGINE); // ex. lucene
+            final String dimension = System.getProperty(CONTENT_DIMENSION); // ex. 384
+            final String field = System.getProperty(CONTENT_FIELD); // ex. content_vector
+            final String method = System.getProperty(CONTENT_METHOD); // ex. hnsw
+            final String engine = System.getProperty(CONTENT_ENGINE); // ex. lucene
+            if (logger.isDebugEnabled()) {
+                logger.debug("field: {}, dimension: {}, method: {}, engine: {}", field, dimension, method, engine);
+            }
+            if (StringUtil.isBlank(dimension) || StringUtil.isBlank(field) || StringUtil.isBlank(method) || StringUtil.isBlank(engine)) {
+                return s;
+            }
             return s.replace("\"content\":", "\"" + field + "\": {\n" //
                     + "  \"type\": \"knn_vector\",\n" //
                     + "  \"dimension\": " + dimension + ",\n" //
@@ -57,8 +75,8 @@ public class SemanticSearchHelper {
     }
 
     public OptionalThing<QueryBuilder> newNeuralQueryBuilder(final String text) {
-        final String modelId = System.getProperty(MODEL_ID); // ex. 384
-        final String field = System.getProperty(KNN_VECTOR_FIELD); // ex. content_vector
+        final String modelId = System.getProperty(CONTENT_MODEL_ID); // ex. 384
+        final String field = System.getProperty(CONTENT_FIELD); // ex. content_vector
         if (StringUtil.isNotBlank(modelId) && StringUtil.isNotBlank(field) && StringUtil.isNotBlank(text)) {
             return OptionalThing.of(new NeuralQueryBuilder.Builder().modelId(modelId).field(field).query(text)
                     .k(LaRequestUtil.getOptionalRequest().map(req -> {

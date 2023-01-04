@@ -18,13 +18,15 @@ package org.codelibs.fess.webapp.semantic_search;
 public class SemanticSearchConstants {
     private static final String PREFIX = "fess.semantic_search.";
 
-    public static final String MODEL_ID = PREFIX + "model_id";
+    public static final String PIPELINE = PREFIX + "pipeline";
 
-    public static final String KNN_VECTOR_DIMENSION = PREFIX + "knn_vector.dimension";
+    public static final String CONTENT_MODEL_ID = PREFIX + "content.model_id";
 
-    public static final String KNN_VECTOR_ENGINE = PREFIX + "knn_vector.engine";
+    public static final String CONTENT_DIMENSION = PREFIX + "content.dimension";
 
-    public static final String KNN_VECTOR_METHOD = PREFIX + "knn_vector.method";
+    public static final String CONTENT_ENGINE = PREFIX + "content.engine";
 
-    public static final String KNN_VECTOR_FIELD = PREFIX + "knn_vector.field";
+    public static final String CONTENT_METHOD = PREFIX + "content.method";
+
+    public static final String CONTENT_FIELD = PREFIX + "content.field";
 }

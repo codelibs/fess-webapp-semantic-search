@@ -15,8 +15,8 @@
  */
 package org.codelibs.fess.webapp.semantic_search.query;
 
-import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.KNN_VECTOR_FIELD;
-import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.MODEL_ID;
+import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_FIELD;
+import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_MODEL_ID;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -77,8 +77,8 @@ public class SemanticTermQueryCommandTest extends LastaDiTestCase {
                 "{\"bool\":{\"should\":[{\"match_phrase\":{\"title\":{\"query\":\"fess\",\"slop\":0,\"zero_terms_query\":\"NONE\",\"boost\":0.5}}},{\"match_phrase\":{\"content\":{\"query\":\"fess\",\"slop\":0,\"zero_terms_query\":\"NONE\",\"boost\":0.05}}},{\"fuzzy\":{\"title\":{\"value\":\"fess\",\"fuzziness\":\"AUTO\",\"prefix_length\":0,\"max_expansions\":10,\"transpositions\":true,\"boost\":0.01}}},{\"fuzzy\":{\"content\":{\"value\":\"fess\",\"fuzziness\":\"AUTO\",\"prefix_length\":0,\"max_expansions\":10,\"transpositions\":true,\"boost\":0.005}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}",
                 "fess");
 
-        System.setProperty(MODEL_ID, "modelx");
-        System.setProperty(KNN_VECTOR_FIELD, "content_vector");
+        System.setProperty(CONTENT_MODEL_ID, "modelx");
+        System.setProperty(CONTENT_FIELD, "content_vector");
 
         assertQueryBuilder("{\"neural\":{\"content_vector\":{\"query_text\":\"fess\",\"model_id\":\"modelx\",\"k\":20,\"boost\":1.0}}}",
                 "fess");
