@@ -3,6 +3,6 @@
 	"http://dbflute.org/meta/lastadi10.dtd">
 <components>
 	<component name="semanticSearchHelper"
-		class="org.codelibs.fess.webapp.semantic_search.query.helper.SemanticSearchHelper">
+		class="org.codelibs.fess.webapp.semantic_search.helper.SemanticSearchHelper">
 	</component>
 </components>

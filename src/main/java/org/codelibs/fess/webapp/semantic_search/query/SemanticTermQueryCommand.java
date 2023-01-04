@@ -15,14 +15,13 @@
  */
 package org.codelibs.fess.webapp.semantic_search.query;
 
-import javax.annotation.Resource;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.search.TermQuery;
 import org.codelibs.fess.entity.QueryContext;
 import org.codelibs.fess.mylasta.direction.FessConfig;
 import org.codelibs.fess.query.TermQueryCommand;
+import org.codelibs.fess.util.ComponentUtil;
 import org.codelibs.fess.webapp.semantic_search.helper.SemanticSearchHelper;
 import org.opensearch.index.query.QueryBuilder;
 
@@ -30,13 +29,10 @@ public class SemanticTermQueryCommand extends TermQueryCommand {
 
     private static final Logger logger = LogManager.getLogger(SemanticTermQueryCommand.class);
 
-    @Resource
-    protected SemanticSearchHelper semanticSearchHelper;
-
     @Override
     protected QueryBuilder convertDefaultTermQuery(final FessConfig fessConfig, final QueryContext context, final TermQuery termQuery,
             final float boost, final String field, final String text) {
-        return semanticSearchHelper.newNeuralQueryBuilder(text).map(builder -> {
+        return getSemanticSearchHelper().newNeuralQueryBuilder(text).map(builder -> {
             context.addFieldLog(field, text);
             context.addHighlightedQuery(text);
             if (logger.isDebugEnabled()) {
@@ -44,5 +40,9 @@ public class SemanticTermQueryCommand extends TermQueryCommand {
             }
             return builder;
         }).orElseGet(() -> super.convertDefaultTermQuery(fessConfig, context, termQuery, boost, field, text));
+    }
+
+    protected SemanticSearchHelper getSemanticSearchHelper() {
+        return ComponentUtil.getComponent("semanticSearchHelper");
     }
 }

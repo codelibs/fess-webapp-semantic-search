@@ -3,7 +3,7 @@
 	"http://dbflute.org/meta/lastadi10.dtd">
 <components>
 	<component name="termQueryCommand"
-		class="org.codelibs.fess.webapp.semantic_search.query.query.SemanticTermQueryCommand">
+		class="org.codelibs.fess.webapp.semantic_search.query.SemanticTermQueryCommand">
 		<postConstruct name="register"></postConstruct>
 	</component>
 </components>

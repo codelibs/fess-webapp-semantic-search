@@ -64,7 +64,6 @@ public class SemanticTermQueryCommandTest extends LastaDiTestCase {
         ComponentUtil.register(semanticSearchHelper, "semanticSearchHelper");
 
         queryCommand = new SemanticTermQueryCommand();
-        queryCommand.semanticSearchHelper = semanticSearchHelper;
     }
 
     @Override
