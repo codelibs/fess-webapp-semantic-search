@@ -76,8 +76,10 @@ public class SemanticSearchHelper {
                     + "\"content\":");
         });
 
-        QueryParser queryParser = ComponentUtil.getQueryParser();
-        queryParser.addFilter((query, chain) -> chain.parse(rewriteQuery(query)));
+        if (ComponentUtil.hasQueryParser()) {
+            QueryParser queryParser = ComponentUtil.getQueryParser();
+            queryParser.addFilter((query, chain) -> chain.parse(rewriteQuery(query)));
+        }
     }
 
     protected String rewriteQuery(final String query) {
