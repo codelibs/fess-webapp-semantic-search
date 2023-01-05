@@ -18,6 +18,7 @@ package org.codelibs.fess.webapp.semantic_search.query;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.search.PhraseQuery;
+import org.codelibs.fess.Constants;
 import org.codelibs.fess.entity.QueryContext;
 import org.codelibs.fess.mylasta.direction.FessConfig;
 import org.codelibs.fess.query.PhraseQueryCommand;
@@ -32,6 +33,10 @@ public class SemanticPhraseQueryCommand extends PhraseQueryCommand {
     @Override
     protected QueryBuilder convertPhraseQuery(final FessConfig fessConfig, final QueryContext context, final PhraseQuery phraseQuery,
             final float boost, final String field, final String[] texts) {
+        if (!Constants.DEFAULT_FIELD.equals(field)) {
+            return super.convertPhraseQuery(fessConfig, context, phraseQuery, boost, field, texts);
+        }
+
         final String text = String.join(" ", texts);
         return getSemanticSearchHelper().newNeuralQueryBuilder(text).map(builder -> {
             context.addFieldLog(field, text);

@@ -18,6 +18,7 @@ package org.codelibs.fess.webapp.semantic_search.query;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.search.TermQuery;
+import org.codelibs.fess.Constants;
 import org.codelibs.fess.entity.QueryContext;
 import org.codelibs.fess.mylasta.direction.FessConfig;
 import org.codelibs.fess.query.TermQueryCommand;
@@ -32,6 +33,10 @@ public class SemanticTermQueryCommand extends TermQueryCommand {
     @Override
     protected QueryBuilder convertDefaultTermQuery(final FessConfig fessConfig, final QueryContext context, final TermQuery termQuery,
             final float boost, final String field, final String text) {
+        if (!Constants.DEFAULT_FIELD.equals(field)) {
+            return super.convertDefaultTermQuery(fessConfig, context, termQuery, boost, field, text);
+        }
+
         return getSemanticSearchHelper().newNeuralQueryBuilder(text).map(builder -> {
             context.addFieldLog(field, text);
             context.addHighlightedQuery(text);
