@@ -56,7 +56,7 @@ public class SemanticTermQueryCommandTest extends LastaDiTestCase {
         ComponentUtil.register(queryParser, "queryParser");
 
         final SearchEngineClient searchEngineClient = new SearchEngineClient();
-        ComponentUtil.register(searchEngineClient, "fessEsClient");
+        ComponentUtil.register(searchEngineClient, "searchEngineClient");
 
         final SemanticSearchHelper semanticSearchHelper = new SemanticSearchHelper();
         semanticSearchHelper.init();
