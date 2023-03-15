@@ -18,27 +18,27 @@ See [Plugin](https://fess.codelibs.org/14.15/admin/plugin-guide.html) of Adminis
 
 ### Download docker-fess
 
-```
-$ git clone https://github.com/codelibs/docker-fess.git
-$ cd docker-fess/compose/snapshot 
+```sh
+git clone https://github.com/codelibs/docker-fess.git
+cd docker-fess/compose 
 ```
 
 ### Add the following line in compose.yaml
 
 ```
-      - "FESS_PLUGINS=fess-webapp-semantic-search:14.6.0-SNAPSHOT"
+      - "FESS_PLUGINS=fess-webapp-semantic-search:14.6.0"
 ```
 
 ### Start Fess and OpenSerach
 
-```
-$ docker compose -f compose.yaml -f compose-opensearch2.yaml up -d
+```sh
+docker compose -f compose.yaml -f compose-opensearch2.yaml up -d
 ```
 
 ### Upload a model into OpenSearch
 
-```
-$ curl -XPOST -H "Content-Type:application/json" 'http://localhost:9200/_plugins/_ml/models/_upload' \
+```sh
+curl -XPOST -H "Content-Type:application/json" 'http://localhost:9200/_plugins/_ml/models/_upload' \
 --data-raw '{
   "name": "all-MiniLM-L6-v2",
   "version": "1.0.0",
@@ -51,13 +51,19 @@ $ curl -XPOST -H "Content-Type:application/json" 'http://localhost:9200/_plugins
   },
   "url": "https://github.com/opensearch-project/ml-commons/raw/2.x/ml-algorithms/src/test/resources/org/opensearch/ml/engine/algorithms/text_embedding/all-MiniLM-L6-v2_torchscript_sentence-transformer.zip?raw=true"
 }'
+```
+Output:
+```
 {"task_id":"<task1-id>","status":"CREATED"}
 ```
 
 ### Check the task status
 
+```sh
+curl -XGET -H "Content-Type:application/json" 'http://localhost:9200/_plugins/_ml/tasks/<task1-id>?pretty'
 ```
-$ curl -XGET -H "Content-Type:application/json" 'http://localhost:9200/_plugins/_ml/tasks/<task1-id>?pretty'
+Output:
+```
 {
   "model_id" : "<model-id>",
   "task_type" : "UPLOAD_MODEL",
@@ -72,15 +78,21 @@ $ curl -XGET -H "Content-Type:application/json" 'http://localhost:9200/_plugins/
 
 ### Load the model on OpenSearch
 
+```sh
+curl -XPOST -H "Content-Type:application/json" 'http://localhost:9200/_plugins/_ml/models/<model-id>/_load'
 ```
-$ curl -XPOST -H "Content-Type:application/json" 'http://localhost:9200/_plugins/_ml/models/<model-id>/_load'
+Output:
+```
 {"task_id":"<task2-id>","status":"CREATED"}
 ```
 
 ### Check the task status
 
+```sh
+curl -XGET -H "Content-Type:application/json" 'http://localhost:9200/_plugins/_ml/tasks/<task2-id>?pretty'
 ```
-$ curl -XGET -H "Content-Type:application/json" 'http://localhost:9200/_plugins/_ml/tasks/<task2-id>?pretty'
+Output:
+```
 {
   "model_id" : "<model-id>",
   "task_type" : "LOAD_MODEL",
@@ -95,8 +107,8 @@ $ curl -XGET -H "Content-Type:application/json" 'http://localhost:9200/_plugins/
 
 ### Create a pipeline for indexing
 
-```
-$ curl -XPUT -H "Content-Type:application/json" 'http://localhost:9200/_ingest/pipeline/neural_pipeline' \
+```sh
+curl -XPUT -H "Content-Type:application/json" 'http://localhost:9200/_ingest/pipeline/neural_pipeline' \
 --data-raw '{
   "description": "An example neural search pipeline",
   "processors" : [
@@ -110,6 +122,9 @@ $ curl -XPUT -H "Content-Type:application/json" 'http://localhost:9200/_ingest/p
     }
   ]
 }'
+```
+Output:
+```
 {"acknowledged":true}
 ```
 
