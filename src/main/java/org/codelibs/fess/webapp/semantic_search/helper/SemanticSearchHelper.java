@@ -22,16 +22,23 @@ import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.C
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_MODEL_ID;
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.PIPELINE;
 
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Map;
+
 import javax.annotation.PostConstruct;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.codelibs.core.lang.StringUtil;
+import org.codelibs.core.lang.ThreadUtil;
+import org.codelibs.curl.CurlResponse;
 import org.codelibs.fess.Constants;
 import org.codelibs.fess.es.client.SearchEngineClient;
 import org.codelibs.fess.query.parser.QueryParser;
 import org.codelibs.fess.util.ComponentUtil;
 import org.codelibs.fess.webapp.semantic_search.index.query.NeuralQueryBuilder;
+import org.codelibs.opensearch.runner.net.OpenSearchCurl;
 import org.dbflute.optional.OptionalThing;
 import org.lastaflute.web.util.LaRequestUtil;
 import org.opensearch.index.query.QueryBuilder;
@@ -44,6 +51,7 @@ public class SemanticSearchHelper {
     @PostConstruct
     public void init() {
         final SearchEngineClient client = ComponentUtil.getSearchEngineClient();
+        client.usePipeline();
         client.addDocumentSettingRewriteRule(s -> {
             final String pipeline = System.getProperty(PIPELINE); // ex. neural_pipeline
             if (logger.isDebugEnabled()) {
@@ -80,6 +88,75 @@ public class SemanticSearchHelper {
             QueryParser queryParser = ComponentUtil.getQueryParser();
             queryParser.addFilter((query, chain) -> chain.parse(rewriteQuery(query)));
         }
+
+        final String modelId = System.getProperty(CONTENT_MODEL_ID);
+        if (StringUtil.isNotBlank(modelId)) {
+            final Map<String, Object> model = getModel(modelId);
+            if (logger.isDebugEnabled()) {
+                logger.debug("model: {}", model);
+            }
+            if ("LOAD_FAILED".equals(model.get("model_state"))) {
+                if (!loadModel(modelId)) {
+                    logger.warn("Failed to load model:{}", modelId);
+                } else if (logger.isDebugEnabled()) {
+                    logger.warn("Loaded model:{}", modelId);
+                }
+            }
+        }
+    }
+
+    protected Map<String, Object> getModel(final String modelId) {
+        try (CurlResponse response = ComponentUtil.getCurlHelper().get("/_plugins/_ml/models/" + modelId).execute()) {
+            if (response.getHttpStatusCode() == 200) {
+                return response.getContent(OpenSearchCurl.jsonParser());
+            } else if (logger.isDebugEnabled()) {
+                logger.debug("model:{} does not exists: {}", modelId, response.getContentAsString());
+            }
+        } catch (final IOException e) {
+            logger.warn("Failed to get model info for {}", modelId, e);
+        }
+        return Collections.emptyMap();
+    }
+
+    protected boolean loadModel(final String modelId) {
+        try (CurlResponse response = ComponentUtil.getCurlHelper().post("/_plugins/_ml/models/" + modelId + "/_load").execute()) {
+            if (response.getHttpStatusCode() == 200) {
+                final Map<String, Object> contentMap = response.getContent(OpenSearchCurl.jsonParser());
+                if (logger.isDebugEnabled()) {
+                    logger.debug("loading model:{}: {}", modelId, contentMap);
+                }
+                if (contentMap.get("task_id") instanceof String taskId) {
+                    for (int i = 0; i < 10; i++) {
+                        ThreadUtil.sleepQuietly(1000L);
+                        final Map<String, Object> taskInfo = getTask(taskId);
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("task: {}", taskInfo);
+                        }
+                        if ("COMPLETED".equals(taskInfo.get("state"))) {
+                            return true;
+                        }
+                    }
+                }
+            } else if (logger.isDebugEnabled()) {
+                logger.debug("Failed to load model:{}: {}", modelId, response.getContentAsString());
+            }
+        } catch (final IOException e) {
+            logger.warn("Failed to load model:{}", modelId, e);
+        }
+        return false;
+    }
+
+    protected Map<String, Object> getTask(final String taskId) {
+        try (CurlResponse response = ComponentUtil.getCurlHelper().get("/_plugins/_ml/tasks/" + taskId).execute()) {
+            if (response.getHttpStatusCode() == 200) {
+                return response.getContent(OpenSearchCurl.jsonParser());
+            } else if (logger.isDebugEnabled()) {
+                logger.debug("Failed to load task:{}: {}", taskId, response.getContentAsString());
+            }
+        } catch (final IOException e) {
+            logger.warn("Failed to load task:{}", taskId, e);
+        }
+        return Collections.emptyMap();
     }
 
     protected String rewriteQuery(final String query) {
@@ -101,11 +178,16 @@ public class SemanticSearchHelper {
             }
         }
 
+        final String modelId = System.getProperty(CONTENT_MODEL_ID);
+        if (StringUtil.isBlank(modelId)) {
+            return query;
+        }
+
         return "\"" + query + "\"";
     }
 
     public OptionalThing<QueryBuilder> newNeuralQueryBuilder(final String text) {
-        final String modelId = System.getProperty(CONTENT_MODEL_ID); // ex. 384
+        final String modelId = System.getProperty(CONTENT_MODEL_ID);
         final String field = System.getProperty(CONTENT_FIELD); // ex. content_vector
         if (StringUtil.isNotBlank(modelId) && StringUtil.isNotBlank(field) && StringUtil.isNotBlank(text)) {
             return OptionalThing.of(new NeuralQueryBuilder.Builder().modelId(modelId).field(field).query(text)
