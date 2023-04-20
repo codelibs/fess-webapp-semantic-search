@@ -48,7 +48,7 @@ fi
 
 echo -n "Checking task:${task_id}"
 ret=RUNNING
-while [ $ret != "COMPLETED" ] ; do
+while [ $ret = "CREATED" ] || [ $ret = "RUNNING" ] ; do
   sleep 1
   curl -o ${tmp_file} -s -XGET -H "Content-Type:application/json" "${opensearch_host}/_plugins/_ml/tasks/${task_id}"
   ret=$(cat ${tmp_file} | jq -r .state)
@@ -69,7 +69,7 @@ fi
 
 echo -n "Checking task:${task_id}"
 ret=RUNNING
-while [ $ret != "COMPLETED" ] ; do
+while [ $ret = "CREATED" ] || [ $ret = "RUNNING" ] ; do
   sleep 1
   curl -o ${tmp_file} -s -XGET -H "Content-Type:application/json" "${opensearch_host}/_plugins/_ml/tasks/${task_id}"
   ret=$(cat ${tmp_file} | jq -r .state)
