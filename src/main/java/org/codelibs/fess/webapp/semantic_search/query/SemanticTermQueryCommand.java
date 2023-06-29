@@ -23,6 +23,7 @@ import org.codelibs.fess.entity.QueryContext;
 import org.codelibs.fess.mylasta.direction.FessConfig;
 import org.codelibs.fess.query.TermQueryCommand;
 import org.codelibs.fess.util.ComponentUtil;
+import org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants;
 import org.codelibs.fess.webapp.semantic_search.helper.SemanticSearchHelper;
 import org.opensearch.index.query.QueryBuilder;
 
@@ -33,11 +34,13 @@ public class SemanticTermQueryCommand extends TermQueryCommand {
     @Override
     protected QueryBuilder convertDefaultTermQuery(final FessConfig fessConfig, final QueryContext context, final TermQuery termQuery,
             final float boost, final String field, final String text) {
-        if (!Constants.DEFAULT_FIELD.equals(field)) {
+        final SemanticSearchHelper semanticSearchHelper = getSemanticSearchHelper();
+
+        if (!Constants.DEFAULT_FIELD.equals(field) || semanticSearchHelper.getContext() == null) {
             return super.convertDefaultTermQuery(fessConfig, context, termQuery, boost, field, text);
         }
 
-        return getSemanticSearchHelper().newNeuralQueryBuilder(text).map(builder -> {
+        return semanticSearchHelper.newNeuralQueryBuilder(text).map(builder -> {
             context.addFieldLog(field, text);
             context.addHighlightedQuery(text);
             if (logger.isDebugEnabled()) {
@@ -48,6 +51,6 @@ public class SemanticTermQueryCommand extends TermQueryCommand {
     }
 
     protected SemanticSearchHelper getSemanticSearchHelper() {
-        return ComponentUtil.getComponent("semanticSearchHelper");
+        return ComponentUtil.getComponent(SemanticSearchConstants.SEMANTIC_SEARCH_HELPER);
     }
 }

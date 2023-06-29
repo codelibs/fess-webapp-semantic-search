@@ -23,6 +23,7 @@ import org.codelibs.fess.entity.QueryContext;
 import org.codelibs.fess.mylasta.direction.FessConfig;
 import org.codelibs.fess.query.PhraseQueryCommand;
 import org.codelibs.fess.util.ComponentUtil;
+import org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants;
 import org.codelibs.fess.webapp.semantic_search.helper.SemanticSearchHelper;
 import org.opensearch.index.query.QueryBuilder;
 
@@ -33,12 +34,14 @@ public class SemanticPhraseQueryCommand extends PhraseQueryCommand {
     @Override
     protected QueryBuilder convertPhraseQuery(final FessConfig fessConfig, final QueryContext context, final PhraseQuery phraseQuery,
             final float boost, final String field, final String[] texts) {
-        if (!Constants.DEFAULT_FIELD.equals(field)) {
+        final SemanticSearchHelper semanticSearchHelper = getSemanticSearchHelper();
+
+        if (!Constants.DEFAULT_FIELD.equals(field) || semanticSearchHelper.getContext() == null) {
             return super.convertPhraseQuery(fessConfig, context, phraseQuery, boost, field, texts);
         }
 
         final String text = String.join(" ", texts);
-        return getSemanticSearchHelper().newNeuralQueryBuilder(text).map(builder -> {
+        return semanticSearchHelper.newNeuralQueryBuilder(text).map(builder -> {
             context.addFieldLog(field, text);
             context.addHighlightedQuery(text);
             if (logger.isDebugEnabled()) {
@@ -49,6 +52,6 @@ public class SemanticPhraseQueryCommand extends PhraseQueryCommand {
     }
 
     protected SemanticSearchHelper getSemanticSearchHelper() {
-        return ComponentUtil.getComponent("semanticSearchHelper");
+        return ComponentUtil.getComponent(SemanticSearchConstants.SEMANTIC_SEARCH_HELPER);
     }
 }

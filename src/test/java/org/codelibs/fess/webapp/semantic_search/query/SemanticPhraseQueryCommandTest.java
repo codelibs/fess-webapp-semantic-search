@@ -27,6 +27,7 @@ import org.codelibs.fess.query.QueryFieldConfig;
 import org.codelibs.fess.query.parser.QueryParser;
 import org.codelibs.fess.util.ComponentUtil;
 import org.codelibs.fess.webapp.semantic_search.helper.SemanticSearchHelper;
+import org.dbflute.optional.OptionalThing;
 import org.dbflute.utflute.lastadi.LastaDiTestCase;
 import org.opensearch.index.query.QueryBuilder;
 
@@ -34,6 +35,8 @@ public class SemanticPhraseQueryCommandTest extends LastaDiTestCase {
     private static final Logger logger = LogManager.getLogger(SemanticPhraseQueryCommandTest.class);
 
     private SemanticPhraseQueryCommand queryCommand;
+
+    private SemanticSearchHelper semanticSearchHelper;
 
     @Override
     protected String prepareConfigFile() {
@@ -58,7 +61,7 @@ public class SemanticPhraseQueryCommandTest extends LastaDiTestCase {
         final SearchEngineClient searchEngineClient = new SearchEngineClient();
         ComponentUtil.register(searchEngineClient, "searchEngineClient");
 
-        final SemanticSearchHelper semanticSearchHelper = new SemanticSearchHelper();
+        semanticSearchHelper = new SemanticSearchHelper();
         semanticSearchHelper.init();
         ComponentUtil.register(semanticSearchHelper, "semanticSearchHelper");
 
@@ -88,11 +91,16 @@ public class SemanticPhraseQueryCommandTest extends LastaDiTestCase {
     }
 
     private void assertQueryBuilder(final String expect, final String text) throws Exception {
+        semanticSearchHelper.createContext(text, null, OptionalThing.empty());
+        try {
         final QueryContext context = new QueryContext(text, false);
         final Query query = ComponentUtil.getQueryParser().parse(context.getQueryString());
         final QueryBuilder builder = queryCommand.execute(context, query, 1.0f);
         logger.info("{} => {}", text, builder.toString());
         assertEquals(expect, builder.toString().replaceAll("[\s\n]", ""));
+        }finally {
+            semanticSearchHelper.closeContext();
+        }
     }
 
 }

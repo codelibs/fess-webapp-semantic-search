@@ -34,7 +34,9 @@ import org.codelibs.core.lang.StringUtil;
 import org.codelibs.core.lang.ThreadUtil;
 import org.codelibs.curl.CurlResponse;
 import org.codelibs.fess.Constants;
+import org.codelibs.fess.entity.SearchRequestParams;
 import org.codelibs.fess.es.client.SearchEngineClient;
+import org.codelibs.fess.mylasta.action.FessUserBean;
 import org.codelibs.fess.query.parser.QueryParser;
 import org.codelibs.fess.util.ComponentUtil;
 import org.codelibs.fess.webapp.semantic_search.index.query.NeuralQueryBuilder;
@@ -85,7 +87,7 @@ public class SemanticSearchHelper {
         });
 
         if (ComponentUtil.hasQueryParser()) {
-            QueryParser queryParser = ComponentUtil.getQueryParser();
+            final QueryParser queryParser = ComponentUtil.getQueryParser();
             queryParser.addFilter((query, chain) -> chain.parse(rewriteQuery(query)));
         }
 
@@ -109,7 +111,8 @@ public class SemanticSearchHelper {
         try (CurlResponse response = ComponentUtil.getCurlHelper().get("/_plugins/_ml/models/" + modelId).execute()) {
             if (response.getHttpStatusCode() == 200) {
                 return response.getContent(OpenSearchCurl.jsonParser());
-            } else if (logger.isDebugEnabled()) {
+            }
+            if (logger.isDebugEnabled()) {
                 logger.debug("model:{} does not exists: {}", modelId, response.getContentAsString());
             }
         } catch (final IOException e) {
@@ -125,7 +128,7 @@ public class SemanticSearchHelper {
                 if (logger.isDebugEnabled()) {
                     logger.debug("loading model:{}: {}", modelId, contentMap);
                 }
-                if (contentMap.get("task_id") instanceof String taskId) {
+                if (contentMap.get("task_id") instanceof final String taskId) {
                     for (int i = 0; i < 10; i++) {
                         ThreadUtil.sleepQuietly(1000L);
                         final Map<String, Object> taskInfo = getTask(taskId);
@@ -150,7 +153,8 @@ public class SemanticSearchHelper {
         try (CurlResponse response = ComponentUtil.getCurlHelper().get("/_plugins/_ml/tasks/" + taskId).execute()) {
             if (response.getHttpStatusCode() == 200) {
                 return response.getContent(OpenSearchCurl.jsonParser());
-            } else if (logger.isDebugEnabled()) {
+            }
+            if (logger.isDebugEnabled()) {
                 logger.debug("Failed to load task:{}: {}", taskId, response.getContentAsString());
             }
         } catch (final IOException e) {
@@ -160,15 +164,7 @@ public class SemanticSearchHelper {
     }
 
     protected String rewriteQuery(final String query) {
-        if (StringUtil.isBlank(query)) {
-            return query;
-        }
-
-        if (query.indexOf('"') != -1) {
-            return query;
-        }
-
-        if (!CharMatcher.whitespace().matchesAnyOf(query)) {
+        if (StringUtil.isBlank(query) || (query.indexOf('"') != -1) || !CharMatcher.whitespace().matchesAnyOf(query)) {
             return query;
         }
 
@@ -200,5 +196,61 @@ public class SemanticSearchHelper {
                     }).orElse(Constants.DEFAULT_PAGE_SIZE)).build());
         }
         return OptionalThing.empty();
+    }
+
+    protected ThreadLocal<SemanticSearchContext> contextLocal = new ThreadLocal<>();
+
+    public SemanticSearchContext createContext(final String query, final SearchRequestParams params,
+            final OptionalThing<FessUserBean> userBean) {
+        if (contextLocal.get() != null) {
+            logger.warn("The context exists: {}", contextLocal.get());
+            contextLocal.remove();
+        }
+        final SemanticSearchContext context = new SemanticSearchContext(query, params, userBean);
+        contextLocal.set(context);
+        return context;
+    }
+
+    public void closeContext() {
+        if (contextLocal.get() == null) {
+            logger.warn("The context does not exist.");
+        } else {
+            contextLocal.remove();
+        }
+    }
+
+    public SemanticSearchContext getContext() {
+        return contextLocal.get();
+    }
+
+    public static class SemanticSearchContext {
+
+        private final String query;
+        private final SearchRequestParams params;
+        private final OptionalThing<FessUserBean> userBean;
+
+        public SemanticSearchContext(final String query, final SearchRequestParams params, final OptionalThing<FessUserBean> userBean) {
+            this.query = query;
+            this.params = params;
+            this.userBean = userBean;
+        }
+
+        public String getQuery() {
+            return query;
+        }
+
+        public SearchRequestParams getParams() {
+            return params;
+        }
+
+        public OptionalThing<FessUserBean> getUserBean() {
+            return userBean;
+        }
+
+        @Override
+        public String toString() {
+            return "SemanticSearchContext [query=" + query + ", params=" + params + ", userBean=" + userBean.orElse(null) + "]";
+        }
+
     }
 }
