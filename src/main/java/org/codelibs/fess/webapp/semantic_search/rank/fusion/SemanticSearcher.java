@@ -50,7 +50,7 @@ public class SemanticSearcher extends DefaultSearcher {
     protected SearchResult search(final String query, final SearchRequestParams params, final OptionalThing<FessUserBean> userBean) {
         final SemanticSearchHelper semanticSearchHelper = getSemanticSearchHelper();
         try {
-            final SearchRequestParams reqParams = new SearchRequestParamsWrapper(params);
+            final SearchRequestParams reqParams = new SearchRequestParamsWrapper(params, semanticSearchHelper.getMinScore());
             semanticSearchHelper.createContext(query, reqParams, userBean);
             return super.search(query, reqParams, userBean);
         } finally {
@@ -64,9 +64,11 @@ public class SemanticSearcher extends DefaultSearcher {
 
     protected static class SearchRequestParamsWrapper extends SearchRequestParams {
         private final SearchRequestParams parent;
+        private Float minScore;
 
-        protected SearchRequestParamsWrapper(final SearchRequestParams params) {
+        protected SearchRequestParamsWrapper(final SearchRequestParams params, Float minScore) {
             this.parent = params;
+            this.minScore = minScore;
         }
 
         @Override
@@ -147,6 +149,11 @@ public class SemanticSearcher extends DefaultSearcher {
         @Override
         public String getSimilarDocHash() {
             return parent.getSimilarDocHash();
+        }
+
+        @Override
+        public Float getMinScore() {
+            return minScore;
         }
     }
 

@@ -23,6 +23,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.lucene.search.Query;
 import org.codelibs.fess.entity.QueryContext;
 import org.codelibs.fess.es.client.SearchEngineClient;
+import org.codelibs.fess.helper.SystemHelper;
 import org.codelibs.fess.query.QueryFieldConfig;
 import org.codelibs.fess.query.parser.QueryParser;
 import org.codelibs.fess.util.ComponentUtil;
@@ -60,6 +61,9 @@ public class SemanticTermQueryCommandTest extends LastaDiTestCase {
 
         final SearchEngineClient searchEngineClient = new SearchEngineClient();
         ComponentUtil.register(searchEngineClient, "searchEngineClient");
+
+        final SystemHelper systemHelper = new SystemHelper();
+        ComponentUtil.register(systemHelper, "systemHelper");
 
         semanticSearchHelper = new SemanticSearchHelper();
         semanticSearchHelper.init();

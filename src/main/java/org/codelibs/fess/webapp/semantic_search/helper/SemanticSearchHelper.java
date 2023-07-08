@@ -39,6 +39,7 @@ import org.codelibs.fess.es.client.SearchEngineClient;
 import org.codelibs.fess.mylasta.action.FessUserBean;
 import org.codelibs.fess.query.parser.QueryParser;
 import org.codelibs.fess.util.ComponentUtil;
+import org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants;
 import org.codelibs.fess.webapp.semantic_search.index.query.NeuralQueryBuilder;
 import org.codelibs.opensearch.runner.net.OpenSearchCurl;
 import org.dbflute.optional.OptionalThing;
@@ -49,6 +50,10 @@ import com.google.common.base.CharMatcher;
 
 public class SemanticSearchHelper {
     private static final Logger logger = LogManager.getLogger(SemanticSearchHelper.class);
+
+    protected ThreadLocal<SemanticSearchContext> contextLocal = new ThreadLocal<>();
+
+    protected Float minScore;
 
     @PostConstruct
     public void init() {
@@ -105,6 +110,24 @@ public class SemanticSearchHelper {
                 }
             }
         }
+
+        load();
+        ComponentUtil.getSystemHelper().addUpdateConfigListener("SemanticSearch", () -> this.load());
+    }
+
+    protected String load() {
+        final StringBuilder buf = new StringBuilder();
+        buf.append("min_score=");
+        final String minScoreValue = System.getProperty(SemanticSearchConstants.MIN_SCORE);
+        if (minScoreValue != null) {
+            try {
+                minScore = Float.valueOf(minScoreValue);
+                buf.append(minScore);
+            } catch (final NumberFormatException e) {
+                logger.debug("Failed to parse {}.", minScoreValue, e);
+            }
+        }
+        return buf.toString();
     }
 
     protected Map<String, Object> getModel(final String modelId) {
@@ -198,8 +221,6 @@ public class SemanticSearchHelper {
         return OptionalThing.empty();
     }
 
-    protected ThreadLocal<SemanticSearchContext> contextLocal = new ThreadLocal<>();
-
     public SemanticSearchContext createContext(final String query, final SearchRequestParams params,
             final OptionalThing<FessUserBean> userBean) {
         if (contextLocal.get() != null) {
@@ -221,6 +242,10 @@ public class SemanticSearchHelper {
 
     public SemanticSearchContext getContext() {
         return contextLocal.get();
+    }
+
+    public Float getMinScore() {
+        return minScore;
     }
 
     public static class SemanticSearchContext {
