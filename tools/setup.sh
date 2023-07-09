@@ -121,6 +121,7 @@ fess.semantic_search.content.dimension=384
 fess.semantic_search.content.method=hnsw
 fess.semantic_search.content.engine=lucene
 fess.semantic_search.content.model_id=${model_id}
+fess.semantic_search.min_score=0.5
 --- system properties: end ---
 EOS
 
