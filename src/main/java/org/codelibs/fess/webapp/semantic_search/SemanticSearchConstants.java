@@ -28,6 +28,8 @@ public class SemanticSearchConstants {
 
     public static final String CONTENT_METHOD = PREFIX + "content.method";
 
+    public static final String CONTENT_SPACE_TYPE = PREFIX + "content.space_type";
+
     public static final String CONTENT_FIELD = PREFIX + "content.field";
 
     public static final String MIN_SCORE = PREFIX + "min_score";

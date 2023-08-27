@@ -5,8 +5,66 @@ pipeline_name=neural_pipeline
 tmp_file=/tmp/output.$$
 
 # https://opensearch.org/docs/latest/ml-commons-plugin/pretrained-models/
-model_name=huggingface/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
-#model_name=huggingface/sentence-transformers/all-MiniLM-L12-v2
+cat <<EOS
+Models:
+[1] huggingface/sentence-transformers/all-distilroberta-v1
+[2] huggingface/sentence-transformers/all-MiniLM-L6-v2"
+[3] huggingface/sentence-transformers/all-MiniLM-L12-v2
+[4] huggingface/sentence-transformers/all-mpnet-base-v2
+[5] huggingface/sentence-transformers/msmarco-distilbert-base-tas-b
+[6] huggingface/sentence-transformers/multi-qa-MiniLM-L6-cos-v1
+[7] huggingface/sentence-transformers/multi-qa-mpnet-base-dot-v1
+[8] huggingface/sentence-transformers/paraphrase-MiniLM-L3-v2
+[9] huggingface/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+EOS
+
+echo -n "Which model would you like to use? "
+read input
+case "${input}" in
+  "1")
+    model_name=huggingface/sentence-transformers/all-distilroberta-v1
+    dimension=768
+    ;;
+  "2")
+    model_name=huggingface/sentence-transformers/all-MiniLM-L6-v2
+    dimension=384
+    ;;
+  "3")
+    model_name=huggingface/sentence-transformers/all-MiniLM-L12-v2
+    dimension=384
+    ;;
+  "4")
+    model_name=huggingface/sentence-transformers/all-mpnet-base-v2
+    dimension=768
+    ;;
+  "5")
+    model_name=huggingface/sentence-transformers/msmarco-distilbert-base-tas-b
+    dimension=768
+    ;;
+  "6")
+    model_name=huggingface/sentence-transformers/multi-qa-MiniLM-L6-cos-v1
+    dimension=384
+    ;;
+  "7")
+    model_name=huggingface/sentence-transformers/multi-qa-mpnet-base-dot-v1
+    dimension=768
+    ;;
+  "8")
+    model_name=huggingface/sentence-transformers/paraphrase-MiniLM-L3-v2
+    dimension=384
+    ;;
+  "9")
+    model_name=huggingface/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+    dimension=384
+    ;;
+  *)
+    input=4
+    model_name=huggingface/sentence-transformers/all-mpnet-base-v2
+    dimension=768
+    ;;
+esac
+
+echo "Selected model: [${input}] ${model_name} (${dimension}-dimensional dense vector space)"
 
 if ! which curl > /dev/null; then
   echo "curl command is not found."
@@ -117,7 +175,7 @@ cat << EOS
 --- system properties: start ---
 fess.semantic_search.pipeline=${pipeline_name}
 fess.semantic_search.content.field=content_vector
-fess.semantic_search.content.dimension=384
+fess.semantic_search.content.dimension=${dimension}
 fess.semantic_search.content.method=hnsw
 fess.semantic_search.content.engine=lucene
 fess.semantic_search.content.model_id=${model_id}

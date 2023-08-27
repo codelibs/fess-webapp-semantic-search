@@ -20,6 +20,7 @@ import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.C
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_FIELD;
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_METHOD;
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_MODEL_ID;
+import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_SPACE_TYPE;
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.PIPELINE;
 
 import java.io.IOException;
@@ -74,8 +75,10 @@ public class SemanticSearchHelper {
             final String field = System.getProperty(CONTENT_FIELD); // ex. content_vector
             final String method = System.getProperty(CONTENT_METHOD); // ex. hnsw
             final String engine = System.getProperty(CONTENT_ENGINE); // ex. lucene
+            final String spaceType = System.getProperty(CONTENT_SPACE_TYPE, "l2"); // ex. l2
             if (logger.isDebugEnabled()) {
-                logger.debug("field: {}, dimension: {}, method: {}, engine: {}", field, dimension, method, engine);
+                logger.debug("field: {}, dimension: {}, method: {}, engine: {}, spaceType: {}", field, dimension, method, engine,
+                        spaceType);
             }
             if (StringUtil.isBlank(dimension) || StringUtil.isBlank(field) || StringUtil.isBlank(method) || StringUtil.isBlank(engine)) {
                 return s;
@@ -85,7 +88,8 @@ public class SemanticSearchHelper {
                     + "  \"dimension\": " + dimension + ",\n" //
                     + "  \"method\": {\n" //
                     + "    \"name\": \"" + method + "\",\n" //
-                    + "    \"engine\": \"" + engine + "\"\n" //
+                    + "    \"engine\": \"" + engine + "\",\n" //
+                    + "    \"space_type\": \"" + spaceType + "\"\n" //
                     + "  }\n" //
                     + "},\n" //
                     + "\"content\":");
