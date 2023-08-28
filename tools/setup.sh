@@ -24,43 +24,53 @@ case "${input}" in
   "1")
     model_name=huggingface/sentence-transformers/all-distilroberta-v1
     dimension=768
+    space_type=cosinesimil
     ;;
   "2")
     model_name=huggingface/sentence-transformers/all-MiniLM-L6-v2
     dimension=384
+    space_type=cosinesimil
     ;;
   "3")
     model_name=huggingface/sentence-transformers/all-MiniLM-L12-v2
     dimension=384
+    space_type=cosinesimil
     ;;
   "4")
     model_name=huggingface/sentence-transformers/all-mpnet-base-v2
     dimension=768
+    space_type=cosinesimil
     ;;
   "5")
     model_name=huggingface/sentence-transformers/msmarco-distilbert-base-tas-b
     dimension=768
+    space_type=cosinesimil
     ;;
   "6")
     model_name=huggingface/sentence-transformers/multi-qa-MiniLM-L6-cos-v1
     dimension=384
+    space_type=cosinesimil
     ;;
   "7")
     model_name=huggingface/sentence-transformers/multi-qa-mpnet-base-dot-v1
     dimension=768
+    space_type=cosinesimil
     ;;
   "8")
     model_name=huggingface/sentence-transformers/paraphrase-MiniLM-L3-v2
     dimension=384
+    space_type=cosinesimil
     ;;
   "9")
     model_name=huggingface/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
     dimension=384
+    space_type=cosinesimil
     ;;
   *)
     input=4
     model_name=huggingface/sentence-transformers/all-mpnet-base-v2
     dimension=768
+    space_type=cosinesimil
     ;;
 esac
 
@@ -178,6 +188,7 @@ fess.semantic_search.content.field=content_vector
 fess.semantic_search.content.dimension=${dimension}
 fess.semantic_search.content.method=hnsw
 fess.semantic_search.content.engine=lucene
+fess.semantic_search.content.space_type=${space_type}
 fess.semantic_search.content.model_id=${model_id}
 fess.semantic_search.min_score=0.5
 --- system properties: end ---
