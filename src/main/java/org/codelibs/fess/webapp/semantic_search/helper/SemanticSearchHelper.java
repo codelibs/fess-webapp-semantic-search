@@ -103,14 +103,13 @@ public class SemanticSearchHelper {
         final String modelId = System.getProperty(CONTENT_MODEL_ID);
         if (StringUtil.isNotBlank(modelId)) {
             final Map<String, Object> model = getModel(modelId);
-            if (logger.isDebugEnabled()) {
-                logger.debug("model: {}", model);
-            }
-            if ("LOAD_FAILED".equals(model.get("model_state"))) {
+            final Object modelStatus = model.get("model_state");
+            logger.info("Loaded model is {}. The status is {}.", model, modelStatus);
+            if (!"DEPLOYED".equals(modelStatus)) {
                 if (!loadModel(modelId)) {
-                    logger.warn("Failed to load model:{}", modelId);
+                    logger.warn("Failed to load model: {} => {}", modelId, getModel(modelId));
                 } else if (logger.isDebugEnabled()) {
-                    logger.warn("Loaded model:{}", modelId);
+                    logger.warn("Loaded model: {}", modelId);
                 }
             }
         }
@@ -156,15 +155,17 @@ public class SemanticSearchHelper {
                     logger.debug("loading model:{}: {}", modelId, contentMap);
                 }
                 if (contentMap.get("task_id") instanceof final String taskId) {
-                    for (int i = 0; i < 10; i++) {
+                    for (int i = 0; i < 60; i++) {
                         ThreadUtil.sleepQuietly(1000L);
                         final Map<String, Object> taskInfo = getTask(taskId);
+                        final Object taskState = taskInfo.get("state");
                         if (logger.isDebugEnabled()) {
-                            logger.debug("task: {}", taskInfo);
+                            logger.debug("task: {}, state: {}, count: {}", taskInfo, taskState, i);
                         }
-                        if ("COMPLETED".equals(taskInfo.get("state"))) {
-                            return true;
+                        if ("CREATED".equals(taskState) || "RUNNING".equals(taskState)) {
+                            continue;
                         }
+                        return true;
                     }
                 }
             } else if (logger.isDebugEnabled()) {
@@ -182,10 +183,10 @@ public class SemanticSearchHelper {
                 return response.getContent(OpenSearchCurl.jsonParser());
             }
             if (logger.isDebugEnabled()) {
-                logger.debug("Failed to load task:{}: {}", taskId, response.getContentAsString());
+                logger.debug("Failed to load task: {} => {}", taskId, response.getContentAsString());
             }
         } catch (final IOException e) {
-            logger.warn("Failed to load task:{}", taskId, e);
+            logger.warn("Failed to load task: {}", taskId, e);
         }
         return Collections.emptyMap();
     }
