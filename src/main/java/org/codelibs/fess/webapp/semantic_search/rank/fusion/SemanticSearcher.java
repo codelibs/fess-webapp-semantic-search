@@ -51,11 +51,32 @@ public class SemanticSearcher extends DefaultSearcher {
         final SemanticSearchHelper semanticSearchHelper = getSemanticSearchHelper();
         try {
             final SearchRequestParams reqParams = new SearchRequestParamsWrapper(params, semanticSearchHelper.getMinScore());
+            final StringBuilder queryBuf = new StringBuilder(query.length() + 40);
+            queryBuf.append(query);
+            final Long minContentLength = semanticSearchHelper.getMinContentLength();
+            if (minContentLength != null && minContentLength.longValue() >= 0) {
+                final String contentLengthField = ComponentUtil.getFessConfig().getIndexFieldContentLength();
+                if (isSearchableField(contentLengthField)) {
+                    queryBuf.append(' ').append(contentLengthField).append(":[").append(minContentLength.toString()).append(" TO *]");
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("append {} range query: {}", contentLengthField, queryBuf);
+                    }
+                }
+            }
             semanticSearchHelper.createContext(query, reqParams, userBean);
-            return super.search(query, reqParams, userBean);
+            return super.search(queryBuf.toString(), reqParams, userBean);
         } finally {
             semanticSearchHelper.closeContext();
         }
+    }
+
+    protected boolean isSearchableField(final String field) {
+        for (final String f : ComponentUtil.getQueryFieldConfig().getSearchFields()) {
+            if (field.equals(f)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     protected SemanticSearchHelper getSemanticSearchHelper() {
@@ -64,9 +85,9 @@ public class SemanticSearcher extends DefaultSearcher {
 
     protected static class SearchRequestParamsWrapper extends SearchRequestParams {
         private final SearchRequestParams parent;
-        private Float minScore;
+        private final Float minScore;
 
-        protected SearchRequestParamsWrapper(final SearchRequestParams params, Float minScore) {
+        protected SearchRequestParamsWrapper(final SearchRequestParams params, final Float minScore) {
             this.parent = params;
             this.minScore = minScore;
         }

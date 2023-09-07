@@ -56,6 +56,8 @@ public class SemanticSearchHelper {
 
     protected Float minScore;
 
+    protected Long minContentLength;
+
     @PostConstruct
     public void init() {
         final SearchEngineClient client = ComponentUtil.getSearchEngineClient();
@@ -115,11 +117,12 @@ public class SemanticSearchHelper {
         }
 
         load();
-        ComponentUtil.getSystemHelper().addUpdateConfigListener("SemanticSearch", () -> this.load());
+        ComponentUtil.getSystemHelper().addUpdateConfigListener("SemanticSearch", this::load);
     }
 
     protected String load() {
         final StringBuilder buf = new StringBuilder();
+
         buf.append("min_score=");
         final String minScoreValue = System.getProperty(SemanticSearchConstants.MIN_SCORE);
         if (minScoreValue != null) {
@@ -130,6 +133,18 @@ public class SemanticSearchHelper {
                 logger.debug("Failed to parse {}.", minScoreValue, e);
             }
         }
+
+        buf.append(", min_content_length=");
+        final String minContentLengthValue = System.getProperty(SemanticSearchConstants.MIN_CONTENT_LENGTH);
+        if (minContentLengthValue != null) {
+            try {
+                minContentLength = Long.valueOf(minContentLengthValue);
+                buf.append(minContentLength);
+            } catch (final NumberFormatException e) {
+                logger.debug("Failed to parse {}.", minContentLengthValue, e);
+            }
+        }
+
         return buf.toString();
     }
 
@@ -251,6 +266,10 @@ public class SemanticSearchHelper {
 
     public Float getMinScore() {
         return minScore;
+    }
+
+    public Long getMinContentLength() {
+        return minContentLength;
     }
 
     public static class SemanticSearchContext {

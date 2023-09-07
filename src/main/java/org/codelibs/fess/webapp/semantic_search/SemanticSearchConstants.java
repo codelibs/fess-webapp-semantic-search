@@ -34,5 +34,7 @@ public class SemanticSearchConstants {
 
     public static final String MIN_SCORE = PREFIX + "min_score";
 
+    public static final String MIN_CONTENT_LENGTH = PREFIX + "min_content_length";
+
     public static final String SEMANTIC_SEARCH_HELPER = "semanticSearchHelper";
 }
