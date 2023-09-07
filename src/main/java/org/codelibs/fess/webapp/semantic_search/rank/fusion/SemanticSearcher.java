@@ -57,9 +57,13 @@ public class SemanticSearcher extends DefaultSearcher {
             if (minContentLength != null && minContentLength.longValue() >= 0) {
                 final String contentLengthField = ComponentUtil.getFessConfig().getIndexFieldContentLength();
                 if (isSearchableField(contentLengthField)) {
+                    if (query.indexOf('"') == -1) {
+                        queryBuf.setLength(0);
+                        queryBuf.append('"').append(query).append('"');
+                    }
                     queryBuf.append(' ').append(contentLengthField).append(":[").append(minContentLength.toString()).append(" TO *]");
                     if (logger.isDebugEnabled()) {
-                        logger.debug("append {} range query: {}", contentLengthField, queryBuf);
+                        logger.debug("append {} range query: {} => {}", contentLengthField, query, queryBuf);
                     }
                 }
             }

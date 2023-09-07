@@ -102,20 +102,6 @@ public class SemanticSearchHelper {
             queryParser.addFilter((query, chain) -> chain.parse(rewriteQuery(query)));
         }
 
-        final String modelId = System.getProperty(CONTENT_MODEL_ID);
-        if (StringUtil.isNotBlank(modelId)) {
-            final Map<String, Object> model = getModel(modelId);
-            final Object modelStatus = model.get("model_state");
-            logger.info("Loaded model is {}. The status is {}.", model, modelStatus);
-            if (!"DEPLOYED".equals(modelStatus)) {
-                if (!loadModel(modelId)) {
-                    logger.warn("Failed to load model: {} => {}", modelId, getModel(modelId));
-                } else if (logger.isDebugEnabled()) {
-                    logger.warn("Loaded model: {}", modelId);
-                }
-            }
-        }
-
         load();
         ComponentUtil.getSystemHelper().addUpdateConfigListener("SemanticSearch", this::load);
     }
@@ -125,23 +111,49 @@ public class SemanticSearchHelper {
 
         buf.append("min_score=");
         final String minScoreValue = System.getProperty(SemanticSearchConstants.MIN_SCORE);
-        if (minScoreValue != null) {
+        if (StringUtil.isNotBlank(minScoreValue)) {
             try {
                 minScore = Float.valueOf(minScoreValue);
                 buf.append(minScore);
             } catch (final NumberFormatException e) {
                 logger.debug("Failed to parse {}.", minScoreValue, e);
+                minScore = null;
             }
+        } else {
+            minScore = null;
         }
 
         buf.append(", min_content_length=");
         final String minContentLengthValue = System.getProperty(SemanticSearchConstants.MIN_CONTENT_LENGTH);
-        if (minContentLengthValue != null) {
+        if (StringUtil.isNotBlank(minContentLengthValue)) {
             try {
                 minContentLength = Long.valueOf(minContentLengthValue);
                 buf.append(minContentLength);
             } catch (final NumberFormatException e) {
                 logger.debug("Failed to parse {}.", minContentLengthValue, e);
+                minContentLength = null;
+            }
+        } else {
+            minContentLength = null;
+        }
+
+        buf.append(",model=");
+        final String modelId = System.getProperty(CONTENT_MODEL_ID);
+        if (StringUtil.isNotBlank(modelId)) {
+            buf.append(modelId);
+            final Map<String, Object> model = getModel(modelId);
+            final Object modelStatus = model.get("model_state");
+            if (logger.isDebugEnabled()) {
+                logger.debug("[{}] Loaded model status is {}. Details: {}", modelId, modelStatus, model);
+            } else {
+                logger.info("[{}] Loaded model status is {}.", modelId, modelStatus);
+            }
+            if (!"DEPLOYED".equals(modelStatus)) {
+                if (!loadModel(modelId)) {
+                    logger.warn("Failed to load model: {} => {}", modelId, getModel(modelId));
+                } else if (logger.isDebugEnabled()) {
+                    logger.info("Loaded model: {}", modelId);
+                }
             }
         }
 
