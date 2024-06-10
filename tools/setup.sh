@@ -7,15 +7,17 @@ tmp_file=/tmp/output.$$
 # https://opensearch.org/docs/latest/ml-commons-plugin/pretrained-models/
 cat <<EOS
 Models:
-[1] huggingface/sentence-transformers/all-distilroberta-v1
-[2] huggingface/sentence-transformers/all-MiniLM-L6-v2"
-[3] huggingface/sentence-transformers/all-MiniLM-L12-v2
-[4] huggingface/sentence-transformers/all-mpnet-base-v2
-[5] huggingface/sentence-transformers/msmarco-distilbert-base-tas-b
-[6] huggingface/sentence-transformers/multi-qa-MiniLM-L6-cos-v1
-[7] huggingface/sentence-transformers/multi-qa-mpnet-base-dot-v1
-[8] huggingface/sentence-transformers/paraphrase-MiniLM-L3-v2
-[9] huggingface/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+[1]  huggingface/sentence-transformers/all-distilroberta-v1
+[2]  huggingface/sentence-transformers/all-MiniLM-L6-v2"
+[3]  huggingface/sentence-transformers/all-MiniLM-L12-v2
+[4]  huggingface/sentence-transformers/all-mpnet-base-v2
+[5]  huggingface/sentence-transformers/msmarco-distilbert-base-tas-b
+[6]  huggingface/sentence-transformers/multi-qa-MiniLM-L6-cos-v1
+[7]  huggingface/sentence-transformers/multi-qa-mpnet-base-dot-v1
+[8]  huggingface/sentence-transformers/paraphrase-MiniLM-L3-v2
+[9]  huggingface/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+[10] huggingface/sentence-transformers/paraphrase-mpnet-base-v2
+[11] huggingface/sentence-transformers/distiluse-base-multilingual-cased-v1
 EOS
 
 echo -n "Which model would you like to use? "
@@ -64,6 +66,16 @@ case "${input}" in
   "9")
     model_name=huggingface/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
     dimension=384
+    space_type=cosinesimil
+    ;;
+  "10")
+    model_name=huggingface/sentence-transformers/paraphrase-mpnet-base-v2
+    dimension=768
+    space_type=cosinesimil
+    ;;
+  "11")
+    model_name=huggingface/sentence-transformers/distiluse-base-multilingual-cased-v1
+    dimension=512
     space_type=cosinesimil
     ;;
   *)
