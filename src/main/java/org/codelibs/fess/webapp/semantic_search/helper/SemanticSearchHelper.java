@@ -20,6 +20,8 @@ import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.C
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_FIELD;
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_METHOD;
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_MODEL_ID;
+import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_NESTED_FIELD;
+import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_CHUNK_FIELD;
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_SPACE_TYPE;
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.PIPELINE;
 
@@ -74,27 +76,53 @@ public class SemanticSearchHelper {
         });
         client.addDocumentMappingRewriteRule(s -> {
             final String dimension = System.getProperty(CONTENT_DIMENSION); // ex. 384
-            final String field = System.getProperty(CONTENT_FIELD); // ex. content_vector
+            final String nestedField = System.getProperty(CONTENT_NESTED_FIELD); // ex. content_vector
+            final String chunkField = System.getProperty(CONTENT_CHUNK_FIELD); // ex. content_chunk
+            final String field = System.getProperty(CONTENT_FIELD); // ex. knn
             final String method = System.getProperty(CONTENT_METHOD); // ex. hnsw
             final String engine = System.getProperty(CONTENT_ENGINE); // ex. lucene
             final String spaceType = System.getProperty(CONTENT_SPACE_TYPE, "l2"); // ex. l2
             if (logger.isDebugEnabled()) {
-                logger.debug("field: {}, dimension: {}, method: {}, engine: {}, spaceType: {}", field, dimension, method, engine,
-                        spaceType);
+                logger.debug("nestedField: {}, field: {}, dimension: {}, method: {}, engine: {}, spaceType: {}", nestedField, field,
+                        dimension, method, engine, spaceType);
             }
             if (StringUtil.isBlank(dimension) || StringUtil.isBlank(field) || StringUtil.isBlank(method) || StringUtil.isBlank(engine)) {
                 return s;
             }
-            return s.replace("\"content\":", "\"" + field + "\": {\n" //
-                    + "  \"type\": \"knn_vector\",\n" //
-                    + "  \"dimension\": " + dimension + ",\n" //
-                    + "  \"method\": {\n" //
-                    + "    \"name\": \"" + method + "\",\n" //
-                    + "    \"engine\": \"" + engine + "\",\n" //
-                    + "    \"space_type\": \"" + spaceType + "\"\n" //
-                    + "  }\n" //
-                    + "},\n" //
-                    + "\"content\":");
+            if (StringUtil.isNotBlank(nestedField)) {
+                return s.replace("\"content\":", //
+                        "\"" + nestedField + "\": {\n" //
+                                + "  \"type\": \"nested\",\n" //
+                                + "  \"properties\": {\n" //
+                                + "    \"" + field + "\": {\n" //
+                                + "      \"type\": \"knn_vector\",\n" //
+                                + "      \"dimension\": " + dimension + ",\n" //
+                                + "      \"method\": {\n" //
+                                + "        \"name\": \"" + method + "\",\n" //
+                                + "        \"engine\": \"" + engine + "\",\n" //
+                                + "        \"space_type\": \"" + spaceType + "\"\n" //
+                                + "      }\n" //
+                                + "    },\n" //
+                                + "  }\n" //
+                                + "},\n" //
+                                + "\"" + chunkField + "\": {\n" //
+                                + "  \"type\": \"text\",\n" //
+                                + "  \"index\": false\n" //
+                                + "},\n" //
+                                + "\"content\":");
+            } else {
+                return s.replace("\"content\":", //
+                        "\"" + field + "\": {\n" //
+                                + "  \"type\": \"knn_vector\",\n" //
+                                + "  \"dimension\": " + dimension + ",\n" //
+                                + "  \"method\": {\n" //
+                                + "    \"name\": \"" + method + "\",\n" //
+                                + "    \"engine\": \"" + engine + "\",\n" //
+                                + "    \"space_type\": \"" + spaceType + "\"\n" //
+                                + "  }\n" //
+                                + "},\n" //
+                                + "\"content\":");
+            }
         });
 
         if (ComponentUtil.hasQueryParser()) {
@@ -239,9 +267,16 @@ public class SemanticSearchHelper {
 
     public OptionalThing<QueryBuilder> newNeuralQueryBuilder(final String text) {
         final String modelId = System.getProperty(CONTENT_MODEL_ID);
-        final String field = System.getProperty(CONTENT_FIELD); // ex. content_vector
+        final String field = System.getProperty(CONTENT_FIELD); // ex. knn
         if (StringUtil.isNotBlank(modelId) && StringUtil.isNotBlank(field) && StringUtil.isNotBlank(text)) {
-            return OptionalThing.of(new NeuralQueryBuilder.Builder().modelId(modelId).field(field).query(text)
+            final String nestedField = System.getProperty(CONTENT_NESTED_FIELD); // ex. content_vector
+            final String vectorField;
+            if (StringUtil.isNotBlank(nestedField)) {
+                vectorField = nestedField + "." + field;
+            } else {
+                vectorField = field;
+            }
+            return OptionalThing.of(new NeuralQueryBuilder.Builder().modelId(modelId).field(vectorField).query(text)
                     .k(LaRequestUtil.getOptionalRequest().map(req -> {
                         final Object pageSize = req.getAttribute(Constants.REQUEST_PAGE_SIZE);
                         if (pageSize != null) {

@@ -176,10 +176,24 @@ curl -o ${tmp_file} -s -XPUT -H "Content-Type:application/json" "${opensearch_ho
   "description": "A neural search pipeline",
   "processors" : [
     {
+      "text_chunking": {
+        "algorithm": {
+          "fixed_token_length": {
+            "token_limit": 100,
+            "overlap_rate": 0.1,
+            "tokenizer": "standard"
+          }
+        },
+        "field_map": {
+          "content": "content_chunk"
+        }
+      }
+    },
+    {
       "text_embedding": {
         "model_id": "'"${model_id}"'",
         "field_map": {
-           "content": "content_vector"
+           "content_chunk": "content_vector"
         }
       }
     }
@@ -196,7 +210,9 @@ fi
 cat << EOS
 --- system properties: start ---
 fess.semantic_search.pipeline=${pipeline_name}
-fess.semantic_search.content.field=content_vector
+fess.semantic_search.content.nested_field=content_vector
+fess.semantic_search.content.chunk_field=content_chunk
+fess.semantic_search.content.field=knn
 fess.semantic_search.content.dimension=${dimension}
 fess.semantic_search.content.method=hnsw
 fess.semantic_search.content.engine=lucene
