@@ -30,6 +30,10 @@ public class SemanticSearchConstants {
 
     public static final String CONTENT_SPACE_TYPE = PREFIX + "content.space_type";
 
+    public static final String CONTENT_PARAM_M = PREFIX + "content.param.m";
+
+    public static final String CONTENT_PARAM_EF_CONSTRUCTION = PREFIX + "content.param.ef_construction";
+
     public static final String CONTENT_FIELD = PREFIX + "content.field";
 
     public static final String CONTENT_NESTED_FIELD = PREFIX + "content.nested_field";

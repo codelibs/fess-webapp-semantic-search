@@ -15,13 +15,15 @@
  */
 package org.codelibs.fess.webapp.semantic_search.helper;
 
+import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_CHUNK_FIELD;
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_DIMENSION;
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_ENGINE;
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_FIELD;
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_METHOD;
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_MODEL_ID;
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_NESTED_FIELD;
-import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_CHUNK_FIELD;
+import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_PARAM_EF_CONSTRUCTION;
+import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_PARAM_M;
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_SPACE_TYPE;
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.PIPELINE;
 
@@ -33,6 +35,7 @@ import javax.annotation.PostConstruct;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.lucene.search.join.ScoreMode;
 import org.codelibs.core.lang.StringUtil;
 import org.codelibs.core.lang.ThreadUtil;
 import org.codelibs.curl.CurlResponse;
@@ -48,6 +51,7 @@ import org.codelibs.opensearch.runner.net.OpenSearchCurl;
 import org.dbflute.optional.OptionalThing;
 import org.lastaflute.web.util.LaRequestUtil;
 import org.opensearch.index.query.QueryBuilder;
+import org.opensearch.index.query.QueryBuilders;
 
 import com.google.common.base.CharMatcher;
 
@@ -76,53 +80,63 @@ public class SemanticSearchHelper {
         });
         client.addDocumentMappingRewriteRule(s -> {
             final String dimension = System.getProperty(CONTENT_DIMENSION); // ex. 384
-            final String nestedField = System.getProperty(CONTENT_NESTED_FIELD); // ex. content_vector
-            final String chunkField = System.getProperty(CONTENT_CHUNK_FIELD); // ex. content_chunk
             final String field = System.getProperty(CONTENT_FIELD); // ex. knn
             final String method = System.getProperty(CONTENT_METHOD); // ex. hnsw
             final String engine = System.getProperty(CONTENT_ENGINE); // ex. lucene
-            final String spaceType = System.getProperty(CONTENT_SPACE_TYPE, "l2"); // ex. l2
             if (logger.isDebugEnabled()) {
-                logger.debug("nestedField: {}, field: {}, dimension: {}, method: {}, engine: {}, spaceType: {}", nestedField, field,
-                        dimension, method, engine, spaceType);
+                logger.debug("field: {}, dimension: {}, method: {}, engine: {}", field, dimension, method, engine);
             }
             if (StringUtil.isBlank(dimension) || StringUtil.isBlank(field) || StringUtil.isBlank(method) || StringUtil.isBlank(engine)) {
                 return s;
             }
+            final String nestedField = System.getProperty(CONTENT_NESTED_FIELD); // ex. content_vector
+            final String chunkField = System.getProperty(CONTENT_CHUNK_FIELD); // ex. content_chunk
+            final String spaceType = System.getProperty(CONTENT_SPACE_TYPE, "l2"); // ex. l2
+            final String m = System.getProperty(CONTENT_PARAM_M, "16"); // ex. 16
+            final String ef = System.getProperty(CONTENT_PARAM_EF_CONSTRUCTION, "100"); // ex. 100
+            final String fieldDef;
             if (StringUtil.isNotBlank(nestedField)) {
-                return s.replace("\"content\":", //
-                        "\"" + nestedField + "\": {\n" //
-                                + "  \"type\": \"nested\",\n" //
-                                + "  \"properties\": {\n" //
-                                + "    \"" + field + "\": {\n" //
-                                + "      \"type\": \"knn_vector\",\n" //
-                                + "      \"dimension\": " + dimension + ",\n" //
-                                + "      \"method\": {\n" //
-                                + "        \"name\": \"" + method + "\",\n" //
-                                + "        \"engine\": \"" + engine + "\",\n" //
-                                + "        \"space_type\": \"" + spaceType + "\"\n" //
-                                + "      }\n" //
-                                + "    },\n" //
-                                + "  }\n" //
-                                + "},\n" //
-                                + "\"" + chunkField + "\": {\n" //
-                                + "  \"type\": \"text\",\n" //
-                                + "  \"index\": false\n" //
-                                + "},\n" //
-                                + "\"content\":");
+                fieldDef = "\"" + nestedField + "\": {\n" //
+                        + "  \"type\": \"nested\",\n" //
+                        + "  \"properties\": {\n" //
+                        + "    \"" + field + "\": {\n" //
+                        + "      \"type\": \"knn_vector\",\n" //
+                        + "      \"dimension\": " + dimension + ",\n" //
+                        + "      \"method\": {\n" //
+                        + "        \"name\": \"" + method + "\",\n" //
+                        + "        \"engine\": \"" + engine + "\",\n" //
+                        + "        \"space_type\": \"" + spaceType + "\",\n" //
+                        + "        \"parameters\": {\n" //
+                        + "          \"m\": " + m + ",\n" //
+                        + "          \"ef_construction\": " + ef + "\n" //
+                        + "        }\n" //
+                        + "      }\n" //
+                        + "    }\n" //
+                        + "  }\n" //
+                        + "},\n" //
+                        + "\"" + chunkField + "\": {\n" //
+                        + "  \"type\": \"text\",\n" //
+                        + "  \"index\": false\n" //
+                        + "},";
             } else {
-                return s.replace("\"content\":", //
-                        "\"" + field + "\": {\n" //
-                                + "  \"type\": \"knn_vector\",\n" //
-                                + "  \"dimension\": " + dimension + ",\n" //
-                                + "  \"method\": {\n" //
-                                + "    \"name\": \"" + method + "\",\n" //
-                                + "    \"engine\": \"" + engine + "\",\n" //
-                                + "    \"space_type\": \"" + spaceType + "\"\n" //
-                                + "  }\n" //
-                                + "},\n" //
-                                + "\"content\":");
+                fieldDef = "\"" + field + "\": {\n" //
+                        + "  \"type\": \"knn_vector\",\n" //
+                        + "  \"dimension\": " + dimension + ",\n" //
+                        + "  \"method\": {\n" //
+                        + "    \"name\": \"" + method + "\",\n" //
+                        + "    \"engine\": \"" + engine + "\",\n" //
+                        + "    \"space_type\": \"" + spaceType + "\",\n" //
+                        + "    \"parameters\": {\n" //
+                        + "      \"m\": \"" + m + "\",\n" //
+                        + "      \"ef_construction\": \"" + ef + "\"\n" //
+                        + "    }\n" //
+                        + "  }\n" //
+                        + "},";
             }
+            if (logger.isDebugEnabled()) {
+                logger.debug("fieldDef: {}", fieldDef);
+            }
+            return s.replace("\"content\":", fieldDef + "\n\"content\":");
         });
 
         if (ComponentUtil.hasQueryParser()) {
@@ -270,20 +284,26 @@ public class SemanticSearchHelper {
         final String field = System.getProperty(CONTENT_FIELD); // ex. knn
         if (StringUtil.isNotBlank(modelId) && StringUtil.isNotBlank(field) && StringUtil.isNotBlank(text)) {
             final String nestedField = System.getProperty(CONTENT_NESTED_FIELD); // ex. content_vector
-            final String vectorField;
             if (StringUtil.isNotBlank(nestedField)) {
-                vectorField = nestedField + "." + field;
+                final String vectorField = nestedField + "." + field;
+                return OptionalThing.of(QueryBuilders.nestedQuery(nestedField, new NeuralQueryBuilder.Builder().modelId(modelId)
+                        .field(vectorField).query(text).k(LaRequestUtil.getOptionalRequest().map(req -> {
+                            final Object pageSize = req.getAttribute(Constants.REQUEST_PAGE_SIZE);
+                            if (pageSize != null) {
+                                return Integer.parseInt(pageSize.toString());
+                            }
+                            return Constants.DEFAULT_PAGE_SIZE;
+                        }).orElse(Constants.DEFAULT_PAGE_SIZE)).build(), ScoreMode.Max));
             } else {
-                vectorField = field;
+                return OptionalThing.of(new NeuralQueryBuilder.Builder().modelId(modelId).field(field).query(text)
+                        .k(LaRequestUtil.getOptionalRequest().map(req -> {
+                            final Object pageSize = req.getAttribute(Constants.REQUEST_PAGE_SIZE);
+                            if (pageSize != null) {
+                                return Integer.parseInt(pageSize.toString());
+                            }
+                            return Constants.DEFAULT_PAGE_SIZE;
+                        }).orElse(Constants.DEFAULT_PAGE_SIZE)).build());
             }
-            return OptionalThing.of(new NeuralQueryBuilder.Builder().modelId(modelId).field(vectorField).query(text)
-                    .k(LaRequestUtil.getOptionalRequest().map(req -> {
-                        final Object pageSize = req.getAttribute(Constants.REQUEST_PAGE_SIZE);
-                        if (pageSize != null) {
-                            return Integer.parseInt(pageSize.toString());
-                        }
-                        return Constants.DEFAULT_PAGE_SIZE;
-                    }).orElse(Constants.DEFAULT_PAGE_SIZE)).build());
         }
         return OptionalThing.empty();
     }
