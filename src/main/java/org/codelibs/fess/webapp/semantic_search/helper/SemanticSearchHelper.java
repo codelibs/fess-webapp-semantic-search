@@ -50,8 +50,10 @@ import org.codelibs.fess.webapp.semantic_search.index.query.NeuralQueryBuilder;
 import org.codelibs.opensearch.runner.net.OpenSearchCurl;
 import org.dbflute.optional.OptionalThing;
 import org.lastaflute.web.util.LaRequestUtil;
+import org.opensearch.index.query.InnerHitBuilder;
 import org.opensearch.index.query.QueryBuilder;
 import org.opensearch.index.query.QueryBuilders;
+import org.opensearch.search.fetch.subphase.FetchSourceContext;
 
 import com.google.common.base.CharMatcher;
 
@@ -63,6 +65,8 @@ public class SemanticSearchHelper {
     protected Float minScore;
 
     protected Long minContentLength;
+
+    protected int chunkSize;
 
     @PostConstruct
     public void init() {
@@ -199,6 +203,20 @@ public class SemanticSearchHelper {
             }
         }
 
+        buf.append("chunk_size=");
+        final String chunkSizeValue = System.getProperty(SemanticSearchConstants.CONTENT_CHUNK_SIZE, "1");
+        if (StringUtil.isNotBlank(chunkSizeValue)) {
+            try {
+                chunkSize = Integer.parseInt(chunkSizeValue);
+                buf.append(chunkSize);
+            } catch (final NumberFormatException e) {
+                logger.debug("Failed to parse {}.", chunkSizeValue, e);
+                chunkSize = 1;
+            }
+        } else {
+            chunkSize = 1;
+        }
+
         return buf.toString();
     }
 
@@ -286,6 +304,8 @@ public class SemanticSearchHelper {
             final String nestedField = System.getProperty(CONTENT_NESTED_FIELD); // ex. content_vector
             if (StringUtil.isNotBlank(nestedField)) {
                 final String vectorField = nestedField + "." + field;
+                final InnerHitBuilder innerHit =
+                        new InnerHitBuilder(nestedField).setSize(chunkSize).setFetchSourceContext(new FetchSourceContext(false));
                 return OptionalThing.of(QueryBuilders.nestedQuery(nestedField, new NeuralQueryBuilder.Builder().modelId(modelId)
                         .field(vectorField).query(text).k(LaRequestUtil.getOptionalRequest().map(req -> {
                             final Object pageSize = req.getAttribute(Constants.REQUEST_PAGE_SIZE);
@@ -293,17 +313,16 @@ public class SemanticSearchHelper {
                                 return Integer.parseInt(pageSize.toString());
                             }
                             return Constants.DEFAULT_PAGE_SIZE;
-                        }).orElse(Constants.DEFAULT_PAGE_SIZE)).build(), ScoreMode.Max));
-            } else {
-                return OptionalThing.of(new NeuralQueryBuilder.Builder().modelId(modelId).field(field).query(text)
-                        .k(LaRequestUtil.getOptionalRequest().map(req -> {
-                            final Object pageSize = req.getAttribute(Constants.REQUEST_PAGE_SIZE);
-                            if (pageSize != null) {
-                                return Integer.parseInt(pageSize.toString());
-                            }
-                            return Constants.DEFAULT_PAGE_SIZE;
-                        }).orElse(Constants.DEFAULT_PAGE_SIZE)).build());
+                        }).orElse(Constants.DEFAULT_PAGE_SIZE)).build(), ScoreMode.Max).innerHit(innerHit));
             }
+            return OptionalThing.of(new NeuralQueryBuilder.Builder().modelId(modelId).field(field).query(text)
+                    .k(LaRequestUtil.getOptionalRequest().map(req -> {
+                        final Object pageSize = req.getAttribute(Constants.REQUEST_PAGE_SIZE);
+                        if (pageSize != null) {
+                            return Integer.parseInt(pageSize.toString());
+                        }
+                        return Constants.DEFAULT_PAGE_SIZE;
+                    }).orElse(Constants.DEFAULT_PAGE_SIZE)).build());
         }
         return OptionalThing.empty();
     }

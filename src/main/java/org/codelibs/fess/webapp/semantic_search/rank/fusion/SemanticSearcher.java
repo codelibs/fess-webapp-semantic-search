@@ -15,24 +15,40 @@
  */
 package org.codelibs.fess.webapp.semantic_search.rank.fusion;
 
+import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_CHUNK_FIELD;
+import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_NESTED_FIELD;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import javax.annotation.PostConstruct;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.codelibs.core.lang.StringUtil;
 import org.codelibs.fess.entity.FacetInfo;
 import org.codelibs.fess.entity.GeoInfo;
 import org.codelibs.fess.entity.HighlightInfo;
 import org.codelibs.fess.entity.SearchRequestParams;
+import org.codelibs.fess.es.client.SearchEngineClient.SearchCondition;
+import org.codelibs.fess.es.client.SearchEngineClient.SearchConditionBuilder;
 import org.codelibs.fess.mylasta.action.FessUserBean;
+import org.codelibs.fess.mylasta.direction.FessConfig;
 import org.codelibs.fess.rank.fusion.DefaultSearcher;
 import org.codelibs.fess.rank.fusion.SearchResult;
 import org.codelibs.fess.util.ComponentUtil;
+import org.codelibs.fess.util.DocumentUtil;
 import org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants;
 import org.codelibs.fess.webapp.semantic_search.helper.SemanticSearchHelper;
 import org.dbflute.optional.OptionalThing;
+import org.opensearch.action.search.SearchRequestBuilder;
+import org.opensearch.search.SearchHit;
+import org.opensearch.search.SearchHit.NestedIdentity;
+import org.opensearch.search.SearchHits;
 
 public class SemanticSearcher extends DefaultSearcher {
     private static final Logger logger = LogManager.getLogger(SemanticSearcher.class);
@@ -72,6 +88,72 @@ public class SemanticSearcher extends DefaultSearcher {
         } finally {
             semanticSearchHelper.closeContext();
         }
+    }
+
+    @Override
+    protected SearchCondition<SearchRequestBuilder> createSearchCondition(final String query, final SearchRequestParams params,
+            final OptionalThing<FessUserBean> userBean) {
+        final String chunkField = System.getProperty(CONTENT_CHUNK_FIELD); // ex. content_chunk
+        if (StringUtil.isBlank(chunkField)) {
+            return super.createSearchCondition(query, params, userBean);
+        }
+        final String[] responseFields =
+                Stream.concat(Arrays.stream(params.getResponseFields()), Stream.of(chunkField)).toArray(String[]::new);
+        if (logger.isDebugEnabled()) {
+            logger.debug("responseFields={}", Arrays.toString(responseFields));
+        }
+        return searchRequestBuilder -> {
+            ComponentUtil.getQueryHelper().processSearchPreference(searchRequestBuilder, userBean, query);
+            return SearchConditionBuilder.builder(searchRequestBuilder).query(query).offset(params.getStartPosition())
+                    .size(params.getPageSize()).facetInfo(params.getFacetInfo()).geoInfo(params.getGeoInfo())
+                    .highlightInfo(params.getHighlightInfo()).similarDocHash(params.getSimilarDocHash()).responseFields(responseFields)
+                    .searchRequestType(params.getType()).trackTotalHits(params.getTrackTotalHits()).minScore(params.getMinScore()).build();
+        };
+    }
+
+    @Override
+    protected Map<String, Object> parseSearchHit(final FessConfig fessConfig, final String hlPrefix, final SearchHit searchHit) {
+        final Map<String, Object> docMap = super.parseSearchHit(fessConfig, hlPrefix, searchHit);
+        final Map<String, SearchHits> innerHits = searchHit.getInnerHits();
+        if (innerHits != null) {
+            final String chunkField = System.getProperty(CONTENT_CHUNK_FIELD); // ex. content_chunk
+            if (StringUtil.isNotBlank(chunkField)) {
+                final String nestedField = System.getProperty(CONTENT_NESTED_FIELD); // ex. content_vector
+                final SearchHits innerSearchHits = innerHits.get(nestedField);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("nestedField={}, innerSearchHits={}", nestedField, innerSearchHits);
+                }
+                final String[] chunks = DocumentUtil.getValue(docMap, chunkField, String[].class);
+                docMap.remove(chunkField);
+                if (innerSearchHits != null) {
+                    final List<String> chunkList = new ArrayList<>();
+                    String contentDesc = null;
+                    for (final SearchHit hit : innerSearchHits.getHits()) {
+                        final NestedIdentity nestedIdentity = hit.getNestedIdentity();
+                        if (nestedIdentity != null) {
+                            final int offset = nestedIdentity.getOffset();
+                            if (logger.isDebugEnabled()) {
+                                logger.debug("offset={}, chunks={}", offset, chunks);
+                            }
+                            if (chunks != null && chunks.length > offset) {
+                                if (contentDesc == null) {
+                                    contentDesc = chunks[offset];
+                                }
+                                chunkList.add(chunks[offset]);
+                            }
+                        }
+                    }
+                    if (StringUtil.isNotBlank(contentDesc)) {
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("matched chunk: {}={}", fessConfig.getResponseFieldContentDescription(), contentDesc);
+                        }
+                        docMap.put(fessConfig.getResponseFieldContentDescription(), contentDesc);
+                    }
+                    docMap.put(chunkField, chunkList.toArray(n -> new String[n]));
+                }
+            }
+        }
+        return docMap;
     }
 
     protected boolean isSearchableField(final String field) {

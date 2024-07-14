@@ -40,6 +40,8 @@ public class SemanticSearchConstants {
 
     public static final String CONTENT_CHUNK_FIELD = PREFIX + "content.chunk_field";
 
+    public static final String CONTENT_CHUNK_SIZE = PREFIX + "content.chunk_size";
+
     public static final String MIN_SCORE = PREFIX + "min_score";
 
     public static final String MIN_CONTENT_LENGTH = PREFIX + "min_content_length";
