@@ -25,8 +25,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import javax.annotation.PostConstruct;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.codelibs.core.lang.StringUtil;
@@ -34,10 +32,10 @@ import org.codelibs.fess.entity.FacetInfo;
 import org.codelibs.fess.entity.GeoInfo;
 import org.codelibs.fess.entity.HighlightInfo;
 import org.codelibs.fess.entity.SearchRequestParams;
-import org.codelibs.fess.es.client.SearchEngineClient.SearchCondition;
-import org.codelibs.fess.es.client.SearchEngineClient.SearchConditionBuilder;
 import org.codelibs.fess.mylasta.action.FessUserBean;
 import org.codelibs.fess.mylasta.direction.FessConfig;
+import org.codelibs.fess.opensearch.client.SearchEngineClient.SearchCondition;
+import org.codelibs.fess.opensearch.client.SearchEngineClient.SearchConditionBuilder;
 import org.codelibs.fess.rank.fusion.DefaultSearcher;
 import org.codelibs.fess.rank.fusion.SearchResult;
 import org.codelibs.fess.util.ComponentUtil;
@@ -49,6 +47,8 @@ import org.opensearch.action.search.SearchRequestBuilder;
 import org.opensearch.search.SearchHit;
 import org.opensearch.search.SearchHit.NestedIdentity;
 import org.opensearch.search.SearchHits;
+
+import jakarta.annotation.PostConstruct;
 
 public class SemanticSearcher extends DefaultSearcher {
     private static final Logger logger = LogManager.getLogger(SemanticSearcher.class);

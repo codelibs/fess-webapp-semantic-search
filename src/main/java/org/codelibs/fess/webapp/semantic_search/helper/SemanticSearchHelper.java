@@ -31,8 +31,6 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 
-import javax.annotation.PostConstruct;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.search.join.ScoreMode;
@@ -41,8 +39,8 @@ import org.codelibs.core.lang.ThreadUtil;
 import org.codelibs.curl.CurlResponse;
 import org.codelibs.fess.Constants;
 import org.codelibs.fess.entity.SearchRequestParams;
-import org.codelibs.fess.es.client.SearchEngineClient;
 import org.codelibs.fess.mylasta.action.FessUserBean;
+import org.codelibs.fess.opensearch.client.SearchEngineClient;
 import org.codelibs.fess.query.parser.QueryParser;
 import org.codelibs.fess.util.ComponentUtil;
 import org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants;
@@ -56,6 +54,8 @@ import org.opensearch.index.query.QueryBuilders;
 import org.opensearch.search.fetch.subphase.FetchSourceContext;
 
 import com.google.common.base.CharMatcher;
+
+import jakarta.annotation.PostConstruct;
 
 public class SemanticSearchHelper {
     private static final Logger logger = LogManager.getLogger(SemanticSearchHelper.class);
