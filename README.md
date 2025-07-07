@@ -57,7 +57,16 @@ fess.semantic_search.content.model_id=<model-id>
 
 The above settings are printed by setup.sh.
 
-### Create a new index
+### Set the neural pipeline as he final pipeline for the fess.search index
+This is required because newer fess versions have deprecated the old fess.ingest.pipeline was removed and the functionality was moved to opensearch core functions.
+Execute the following curl command to set the new neural_pipeline as the final pipeline for ingesting.
 
-In Admin > Maintenance page, start reindexing.
-Then, create a crawling config, start a crawler, and search them.
+```
+curl -X PUT "http://search01:9200/fess.search/_settings" -H 'Content-Type: application/json' -d '
+{
+"index": {
+"final_pipeline": "neural_pipeline"
+}
+}'
+```
+make sure to adapt curl request to your environment.
