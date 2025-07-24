@@ -27,7 +27,17 @@ import org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants;
 import org.codelibs.fess.webapp.semantic_search.helper.SemanticSearchHelper;
 import org.opensearch.index.query.QueryBuilder;
 
+/**
+ * Handles term-based semantic search queries by converting them to neural queries when appropriate.
+ * Extends Fess's TermQueryCommand to integrate neural search capabilities.
+ */
 public class SemanticTermQueryCommand extends TermQueryCommand {
+
+    /**
+     * Default constructor.
+     */
+    public SemanticTermQueryCommand() {
+    }
 
     private static final Logger logger = LogManager.getLogger(SemanticTermQueryCommand.class);
 
@@ -50,6 +60,11 @@ public class SemanticTermQueryCommand extends TermQueryCommand {
         }).orElseGet(() -> super.convertDefaultTermQuery(fessConfig, context, termQuery, boost, field, text));
     }
 
+    /**
+     * Gets the SemanticSearchHelper component for neural query processing.
+     *
+     * @return the SemanticSearchHelper instance
+     */
     protected SemanticSearchHelper getSemanticSearchHelper() {
         return ComponentUtil.getComponent(SemanticSearchConstants.SEMANTIC_SEARCH_HELPER);
     }

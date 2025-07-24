@@ -27,7 +27,17 @@ import org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants;
 import org.codelibs.fess.webapp.semantic_search.helper.SemanticSearchHelper;
 import org.opensearch.index.query.QueryBuilder;
 
+/**
+ * Converts phrase queries to neural queries when appropriate for semantic search.
+ * Extends Fess's PhraseQueryCommand to integrate neural search capabilities.
+ */
 public class SemanticPhraseQueryCommand extends PhraseQueryCommand {
+
+    /**
+     * Default constructor.
+     */
+    public SemanticPhraseQueryCommand() {
+    }
 
     private static final Logger logger = LogManager.getLogger(SemanticPhraseQueryCommand.class);
 
@@ -51,6 +61,11 @@ public class SemanticPhraseQueryCommand extends PhraseQueryCommand {
         }).orElseGet(() -> super.convertPhraseQuery(fessConfig, context, phraseQuery, boost, field, texts));
     }
 
+    /**
+     * Gets the SemanticSearchHelper component for neural query processing.
+     *
+     * @return the SemanticSearchHelper instance
+     */
     protected SemanticSearchHelper getSemanticSearchHelper() {
         return ComponentUtil.getComponent(SemanticSearchConstants.SEMANTIC_SEARCH_HELPER);
     }

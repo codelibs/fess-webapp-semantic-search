@@ -28,6 +28,10 @@ import org.opensearch.index.query.AbstractQueryBuilder;
 import org.opensearch.index.query.QueryBuilder;
 import org.opensearch.index.query.QueryShardContext;
 
+/**
+ * Custom OpenSearch query builder for neural/vector search queries.
+ * Integrates with OpenSearch's neural search plugin to perform semantic search operations.
+ */
 public class NeuralQueryBuilder extends AbstractQueryBuilder<NeuralQueryBuilder> {
 
     private static final String NAME = "neural";
@@ -42,16 +46,27 @@ public class NeuralQueryBuilder extends AbstractQueryBuilder<NeuralQueryBuilder>
 
     private static final int DEFAULT_K = 10;
 
+    /** The field name to search against. */
     protected String fieldName;
 
+    /** The query text to be converted to vector representation. */
     protected String queryText;
 
+    /** The ML model ID used for vector conversion. */
     protected String modelId;
 
+    /** Number of nearest neighbors to return. */
     protected int k = DEFAULT_K;
 
+    /** Optional filter to apply to the neural search results. */
     protected QueryBuilder filter;
 
+    /**
+     * Constructs a NeuralQueryBuilder from stream input.
+     *
+     * @param in the stream input to read from
+     * @throws IOException if an I/O error occurs
+     */
     public NeuralQueryBuilder(final StreamInput in) throws IOException {
         super(in);
         this.fieldName = in.readString();
@@ -64,38 +79,83 @@ public class NeuralQueryBuilder extends AbstractQueryBuilder<NeuralQueryBuilder>
     private NeuralQueryBuilder() {
     }
 
+    /**
+     * Builder class for creating NeuralQueryBuilder instances.
+     */
     public static class Builder {
+
+        /**
+         * Default constructor.
+         */
+        public Builder() {
+        }
+
         private int k;
         private String modelId;
         private String queryText;
         private String fieldName;
         private QueryBuilder filter;
 
+        /**
+         * Sets the field name to search against.
+         *
+         * @param fieldName the field name
+         * @return this builder instance
+         */
         public Builder field(final String fieldName) {
             this.fieldName = fieldName;
             return this;
         }
 
+        /**
+         * Sets the query text to be converted to vector representation.
+         *
+         * @param queryText the query text
+         * @return this builder instance
+         */
         public Builder query(final String queryText) {
             this.queryText = queryText;
             return this;
         }
 
+        /**
+         * Sets the ML model ID used for vector conversion.
+         *
+         * @param modelId the model ID
+         * @return this builder instance
+         */
         public Builder modelId(final String modelId) {
             this.modelId = modelId;
             return this;
         }
 
+        /**
+         * Sets the number of nearest neighbors to return.
+         *
+         * @param k the number of neighbors
+         * @return this builder instance
+         */
         public Builder k(final int k) {
             this.k = k;
             return this;
         }
 
+        /**
+         * Sets an optional filter to apply to the neural search results.
+         *
+         * @param filter the filter query
+         * @return this builder instance
+         */
         public Builder filter(final QueryBuilder filter) {
             this.filter = filter;
             return this;
         }
 
+        /**
+         * Builds and returns a new NeuralQueryBuilder instance.
+         *
+         * @return the constructed NeuralQueryBuilder
+         */
         public NeuralQueryBuilder build() {
             final NeuralQueryBuilder query = new NeuralQueryBuilder();
             query.k = k;
