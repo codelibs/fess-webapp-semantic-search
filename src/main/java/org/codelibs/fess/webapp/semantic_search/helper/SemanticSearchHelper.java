@@ -57,17 +57,36 @@ import com.google.common.base.CharMatcher;
 
 import jakarta.annotation.PostConstruct;
 
+/**
+ * Central component managing neural search configuration and model interactions.
+ * Handles OpenSearch ML model registration, loading, and deployment.
+ * Configures document mapping for vector fields and chunking.
+ */
 public class SemanticSearchHelper {
     private static final Logger logger = LogManager.getLogger(SemanticSearchHelper.class);
 
+    /**
+     * Default constructor.
+     */
+    public SemanticSearchHelper() {
+    }
+
+    /** Thread-local storage for semantic search context. */
     protected ThreadLocal<SemanticSearchContext> contextLocal = new ThreadLocal<>();
 
+    /** Minimum score threshold for search results. */
     protected Float minScore;
 
+    /** Minimum content length requirement for search results. */
     protected Long minContentLength;
 
+    /** Size of content chunks for processing. */
     protected int chunkSize;
 
+    /**
+     * Initializes the semantic search helper by configuring OpenSearch mappings,
+     * loading ML models, and setting up query rewrite rules.
+     */
     @PostConstruct
     public void init() {
         final SearchEngineClient client = ComponentUtil.getSearchEngineClient();
@@ -152,6 +171,11 @@ public class SemanticSearchHelper {
         ComponentUtil.getSystemHelper().addUpdateConfigListener("SemanticSearch", this::load);
     }
 
+    /**
+     * Loads configuration values from system properties and initializes ML models.
+     *
+     * @return a string representation of the loaded configuration
+     */
     protected String load() {
         final StringBuilder buf = new StringBuilder();
 
@@ -220,6 +244,12 @@ public class SemanticSearchHelper {
         return buf.toString();
     }
 
+    /**
+     * Retrieves model information from OpenSearch ML plugin.
+     *
+     * @param modelId the ML model ID
+     * @return model information map, or empty map if not found
+     */
     protected Map<String, Object> getModel(final String modelId) {
         try (CurlResponse response = ComponentUtil.getCurlHelper().get("/_plugins/_ml/models/" + modelId).execute()) {
             if (response.getHttpStatusCode() == 200) {
@@ -234,6 +264,12 @@ public class SemanticSearchHelper {
         return Collections.emptyMap();
     }
 
+    /**
+     * Loads and deploys an ML model in OpenSearch.
+     *
+     * @param modelId the ML model ID to load
+     * @return true if model was loaded successfully, false otherwise
+     */
     protected boolean loadModel(final String modelId) {
         try (CurlResponse response = ComponentUtil.getCurlHelper().post("/_plugins/_ml/models/" + modelId + "/_load").execute()) {
             if (response.getHttpStatusCode() == 200) {
@@ -264,6 +300,12 @@ public class SemanticSearchHelper {
         return false;
     }
 
+    /**
+     * Retrieves task information for model loading operations.
+     *
+     * @param taskId the task ID
+     * @return task information map, or empty map if not found
+     */
     protected Map<String, Object> getTask(final String taskId) {
         try (CurlResponse response = ComponentUtil.getCurlHelper().get("/_plugins/_ml/tasks/" + taskId).execute()) {
             if (response.getHttpStatusCode() == 200) {
@@ -278,6 +320,12 @@ public class SemanticSearchHelper {
         return Collections.emptyMap();
     }
 
+    /**
+     * Rewrites queries for semantic search by adding quotes to multi-word queries.
+     *
+     * @param query the original query string
+     * @return the rewritten query string
+     */
     protected String rewriteQuery(final String query) {
         if (StringUtil.isBlank(query) || (query.indexOf('"') != -1) || !CharMatcher.whitespace().matchesAnyOf(query)) {
             return query;
@@ -297,6 +345,12 @@ public class SemanticSearchHelper {
         return "\"" + query + "\"";
     }
 
+    /**
+     * Creates a new neural query builder for semantic search.
+     *
+     * @param text the query text to convert to neural query
+     * @return optional neural query builder, or empty if not configured
+     */
     public OptionalThing<QueryBuilder> newNeuralQueryBuilder(final String text) {
         final String modelId = System.getProperty(CONTENT_MODEL_ID);
         final String field = System.getProperty(CONTENT_FIELD); // ex. knn
@@ -327,6 +381,14 @@ public class SemanticSearchHelper {
         return OptionalThing.empty();
     }
 
+    /**
+     * Creates a new semantic search context for the current thread.
+     *
+     * @param query the search query
+     * @param params the search request parameters
+     * @param userBean the optional user bean
+     * @return the created semantic search context
+     */
     public SemanticSearchContext createContext(final String query, final SearchRequestParams params,
             final OptionalThing<FessUserBean> userBean) {
         if (contextLocal.get() != null) {
@@ -338,6 +400,9 @@ public class SemanticSearchHelper {
         return context;
     }
 
+    /**
+     * Closes and removes the current semantic search context.
+     */
     public void closeContext() {
         if (contextLocal.get() == null) {
             logger.warn("The context does not exist.");
@@ -346,38 +411,78 @@ public class SemanticSearchHelper {
         }
     }
 
+    /**
+     * Gets the current semantic search context for this thread.
+     *
+     * @return the current context, or null if no context exists
+     */
     public SemanticSearchContext getContext() {
         return contextLocal.get();
     }
 
+    /**
+     * Gets the minimum score threshold for search results.
+     *
+     * @return the minimum score, or null if not configured
+     */
     public Float getMinScore() {
         return minScore;
     }
 
+    /**
+     * Gets the minimum content length requirement for search results.
+     *
+     * @return the minimum content length, or null if not configured
+     */
     public Long getMinContentLength() {
         return minContentLength;
     }
 
+    /**
+     * Context object holding semantic search parameters and state.
+     */
     public static class SemanticSearchContext {
 
         private final String query;
         private final SearchRequestParams params;
         private final OptionalThing<FessUserBean> userBean;
 
+        /**
+         * Constructs a new semantic search context.
+         *
+         * @param query the search query
+         * @param params the search request parameters
+         * @param userBean the optional user bean
+         */
         public SemanticSearchContext(final String query, final SearchRequestParams params, final OptionalThing<FessUserBean> userBean) {
             this.query = query;
             this.params = params;
             this.userBean = userBean;
         }
 
+        /**
+         * Gets the search query.
+         *
+         * @return the search query
+         */
         public String getQuery() {
             return query;
         }
 
+        /**
+         * Gets the search request parameters.
+         *
+         * @return the search request parameters
+         */
         public SearchRequestParams getParams() {
             return params;
         }
 
+        /**
+         * Gets the optional user bean.
+         *
+         * @return the optional user bean
+         */
         public OptionalThing<FessUserBean> getUserBean() {
             return userBean;
         }

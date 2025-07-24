@@ -50,9 +50,22 @@ import org.opensearch.search.SearchHits;
 
 import jakarta.annotation.PostConstruct;
 
+/**
+ * Extends Fess's DefaultSearcher for rank fusion processing with semantic search capabilities.
+ * Handles chunked content processing and inner hit parsing for neural search results.
+ */
 public class SemanticSearcher extends DefaultSearcher {
     private static final Logger logger = LogManager.getLogger(SemanticSearcher.class);
 
+    /**
+     * Default constructor.
+     */
+    public SemanticSearcher() {
+    }
+
+    /**
+     * Registers this searcher with the RankFusionProcessor.
+     */
     @PostConstruct
     public void register() {
         if (logger.isInfoEnabled()) {
@@ -156,6 +169,12 @@ public class SemanticSearcher extends DefaultSearcher {
         return docMap;
     }
 
+    /**
+     * Checks if a field is searchable according to the query field configuration.
+     *
+     * @param field the field name to check
+     * @return true if the field is searchable, false otherwise
+     */
     protected boolean isSearchableField(final String field) {
         for (final String f : ComponentUtil.getQueryFieldConfig().getSearchFields()) {
             if (field.equals(f)) {
@@ -165,14 +184,28 @@ public class SemanticSearcher extends DefaultSearcher {
         return false;
     }
 
+    /**
+     * Gets the SemanticSearchHelper component for neural query processing.
+     *
+     * @return the SemanticSearchHelper instance
+     */
     protected SemanticSearchHelper getSemanticSearchHelper() {
         return ComponentUtil.getComponent(SemanticSearchConstants.SEMANTIC_SEARCH_HELPER);
     }
 
+    /**
+     * Wrapper class for SearchRequestParams that overrides minimum score settings.
+     */
     protected static class SearchRequestParamsWrapper extends SearchRequestParams {
         private final SearchRequestParams parent;
         private final Float minScore;
 
+        /**
+         * Constructs a wrapper with custom minimum score.
+         *
+         * @param params the original search request parameters
+         * @param minScore the minimum score threshold
+         */
         protected SearchRequestParamsWrapper(final SearchRequestParams params, final Float minScore) {
             this.parent = params;
             this.minScore = minScore;
