@@ -37,8 +37,11 @@ public class NeuralQueryBuilderTest extends TestCase {
      * Test basic NeuralQueryBuilder construction using Builder pattern
      */
     public void test_builderPattern() throws Exception {
-        NeuralQueryBuilder queryBuilder = new NeuralQueryBuilder.Builder().field("content_vector").query("semantic search test")
-                .modelId("test-model-id").k(50).build();
+        NeuralQueryBuilder queryBuilder = new NeuralQueryBuilder.Builder().field("content_vector")
+                .query("semantic search test")
+                .modelId("test-model-id")
+                .k(50)
+                .build();
 
         assertNotNull(queryBuilder);
         assertEquals("neural", queryBuilder.getWriteableName());
@@ -51,7 +54,11 @@ public class NeuralQueryBuilderTest extends TestCase {
         BoolQueryBuilder filter = QueryBuilders.boolQuery().must(QueryBuilders.termQuery("category", "technology"));
 
         NeuralQueryBuilder queryBuilder = new NeuralQueryBuilder.Builder().field("embedding_field")
-                .query("machine learning artificial intelligence").modelId("sentence-transformer-model").k(100).filter(filter).build();
+                .query("machine learning artificial intelligence")
+                .modelId("sentence-transformer-model")
+                .k(100)
+                .filter(filter)
+                .build();
 
         assertNotNull(queryBuilder);
         assertEquals("neural", queryBuilder.getWriteableName());
@@ -77,8 +84,11 @@ public class NeuralQueryBuilderTest extends TestCase {
      * Test basic query builder functionality
      */
     public void test_basicQueryBuilder() throws Exception {
-        NeuralQueryBuilder queryBuilder = new NeuralQueryBuilder.Builder().field("content_embedding").query("natural language processing")
-                .modelId("nlp-model-v2").k(25).build();
+        NeuralQueryBuilder queryBuilder = new NeuralQueryBuilder.Builder().field("content_embedding")
+                .query("natural language processing")
+                .modelId("nlp-model-v2")
+                .k(25)
+                .build();
 
         assertNotNull(queryBuilder);
         assertEquals("neural", queryBuilder.getWriteableName());
@@ -94,8 +104,12 @@ public class NeuralQueryBuilderTest extends TestCase {
     public void test_queryBuilderWithFilter() throws Exception {
         BoolQueryBuilder filter = QueryBuilders.boolQuery().must(QueryBuilders.rangeQuery("timestamp").gte("2023-01-01"));
 
-        NeuralQueryBuilder queryBuilder = new NeuralQueryBuilder.Builder().field("doc_vector").query("information retrieval")
-                .modelId("retrieval-model").k(75).filter(filter).build();
+        NeuralQueryBuilder queryBuilder = new NeuralQueryBuilder.Builder().field("doc_vector")
+                .query("information retrieval")
+                .modelId("retrieval-model")
+                .k(75)
+                .filter(filter)
+                .build();
 
         assertNotNull(queryBuilder);
         assertEquals("neural", queryBuilder.getWriteableName());
@@ -109,11 +123,17 @@ public class NeuralQueryBuilderTest extends TestCase {
      */
     public void test_equalityAndHashCode() throws Exception {
         // Create query builders with same parameters
-        NeuralQueryBuilder original = new NeuralQueryBuilder.Builder().field("semantic_vector").query("deep learning neural networks")
-                .modelId("transformer-model").k(200).build();
+        NeuralQueryBuilder original = new NeuralQueryBuilder.Builder().field("semantic_vector")
+                .query("deep learning neural networks")
+                .modelId("transformer-model")
+                .k(200)
+                .build();
 
-        NeuralQueryBuilder similar = new NeuralQueryBuilder.Builder().field("semantic_vector").query("deep learning neural networks")
-                .modelId("transformer-model").k(200).build();
+        NeuralQueryBuilder similar = new NeuralQueryBuilder.Builder().field("semantic_vector")
+                .query("deep learning neural networks")
+                .modelId("transformer-model")
+                .k(200)
+                .build();
 
         // Verify equality
         assertTrue(original.equals(similar));
@@ -129,8 +149,12 @@ public class NeuralQueryBuilderTest extends TestCase {
     public void test_queryBuilderWithFilterEquality() throws Exception {
         BoolQueryBuilder filter = QueryBuilders.boolQuery().must(QueryBuilders.termQuery("status", "published"));
 
-        NeuralQueryBuilder original = new NeuralQueryBuilder.Builder().field("title_vector").query("machine learning algorithms")
-                .modelId("ml-model").k(50).filter(filter).build();
+        NeuralQueryBuilder original = new NeuralQueryBuilder.Builder().field("title_vector")
+                .query("machine learning algorithms")
+                .modelId("ml-model")
+                .k(50)
+                .filter(filter)
+                .build();
 
         assertNotNull(original);
         assertEquals("neural", original.getWriteableName());
@@ -148,7 +172,10 @@ public class NeuralQueryBuilderTest extends TestCase {
         NeuralQueryBuilder query2 = new NeuralQueryBuilder.Builder().field("vector1").query("test query").modelId("model1").k(10).build();
 
         NeuralQueryBuilder query3 = new NeuralQueryBuilder.Builder().field("vector2") // different field
-                .query("test query").modelId("model1").k(10).build();
+                .query("test query")
+                .modelId("model1")
+                .k(10)
+                .build();
 
         // Same content should be equal
         assertTrue(query1.equals(query2));
@@ -169,8 +196,11 @@ public class NeuralQueryBuilderTest extends TestCase {
      * Test hashCode consistency
      */
     public void test_hashCodeConsistency() throws Exception {
-        NeuralQueryBuilder query = new NeuralQueryBuilder.Builder().field("consistent_vector").query("consistent query")
-                .modelId("consistent_model").k(42).build();
+        NeuralQueryBuilder query = new NeuralQueryBuilder.Builder().field("consistent_vector")
+                .query("consistent query")
+                .modelId("consistent_model")
+                .k(42)
+                .build();
 
         int hashCode1 = query.hashCode();
         int hashCode2 = query.hashCode();
@@ -178,8 +208,11 @@ public class NeuralQueryBuilderTest extends TestCase {
         assertEquals(hashCode1, hashCode2);
 
         // Different objects with same content should have same hash
-        NeuralQueryBuilder query2 = new NeuralQueryBuilder.Builder().field("consistent_vector").query("consistent query")
-                .modelId("consistent_model").k(42).build();
+        NeuralQueryBuilder query2 = new NeuralQueryBuilder.Builder().field("consistent_vector")
+                .query("consistent query")
+                .modelId("consistent_model")
+                .k(42)
+                .build();
 
         assertEquals(query.hashCode(), query2.hashCode());
     }
@@ -249,8 +282,11 @@ public class NeuralQueryBuilderTest extends TestCase {
     public void test_specialCharactersInQuery() throws Exception {
         String specialQuery = "特殊文字テスト \"quotes\" & symbols <tag> {json} [array]";
 
-        NeuralQueryBuilder queryBuilder = new NeuralQueryBuilder.Builder().field("multilingual_vector").query(specialQuery)
-                .modelId("multilingual_model").k(30).build();
+        NeuralQueryBuilder queryBuilder = new NeuralQueryBuilder.Builder().field("multilingual_vector")
+                .query(specialQuery)
+                .modelId("multilingual_model")
+                .k(30)
+                .build();
 
         assertNotNull(queryBuilder);
         assertEquals("neural", queryBuilder.getWriteableName());
