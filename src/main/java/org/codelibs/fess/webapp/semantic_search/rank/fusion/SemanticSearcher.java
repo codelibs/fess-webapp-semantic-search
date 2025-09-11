@@ -117,10 +117,19 @@ public class SemanticSearcher extends DefaultSearcher {
         }
         return searchRequestBuilder -> {
             ComponentUtil.getQueryHelper().processSearchPreference(searchRequestBuilder, userBean, query);
-            return SearchConditionBuilder.builder(searchRequestBuilder).query(query).offset(params.getStartPosition())
-                    .size(params.getPageSize()).facetInfo(params.getFacetInfo()).geoInfo(params.getGeoInfo())
-                    .highlightInfo(params.getHighlightInfo()).similarDocHash(params.getSimilarDocHash()).responseFields(responseFields)
-                    .searchRequestType(params.getType()).trackTotalHits(params.getTrackTotalHits()).minScore(params.getMinScore()).build();
+            return SearchConditionBuilder.builder(searchRequestBuilder)
+                    .query(query)
+                    .offset(params.getStartPosition())
+                    .size(params.getPageSize())
+                    .facetInfo(params.getFacetInfo())
+                    .geoInfo(params.getGeoInfo())
+                    .highlightInfo(params.getHighlightInfo())
+                    .similarDocHash(params.getSimilarDocHash())
+                    .responseFields(responseFields)
+                    .searchRequestType(params.getType())
+                    .trackTotalHits(params.getTrackTotalHits())
+                    .minScore(params.getMinScore())
+                    .build();
         };
     }
 

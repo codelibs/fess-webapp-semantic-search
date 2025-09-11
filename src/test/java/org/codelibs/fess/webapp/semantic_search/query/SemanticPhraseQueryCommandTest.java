@@ -97,12 +97,12 @@ public class SemanticPhraseQueryCommandTest extends LastaDiTestCase {
     private void assertQueryBuilder(final String expect, final String text) throws Exception {
         semanticSearchHelper.createContext(text, null, OptionalThing.empty());
         try {
-        final QueryContext context = new QueryContext(text, false);
-        final Query query = ComponentUtil.getQueryParser().parse(context.getQueryString());
-        final QueryBuilder builder = queryCommand.execute(context, query, 1.0f);
-        logger.info("{} => {}", text, builder.toString());
-        assertEquals(expect, builder.toString().replaceAll("[\s\n]", ""));
-        }finally {
+            final QueryContext context = new QueryContext(text, false);
+            final Query query = ComponentUtil.getQueryParser().parse(context.getQueryString());
+            final QueryBuilder builder = queryCommand.execute(context, query, 1.0f);
+            logger.info("{} => {}", text, builder.toString());
+            assertEquals(expect, builder.toString().replaceAll("[\s\n]", ""));
+        } finally {
             semanticSearchHelper.closeContext();
         }
     }

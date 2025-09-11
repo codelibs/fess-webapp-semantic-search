@@ -360,23 +360,31 @@ public class SemanticSearchHelper {
                 final String vectorField = nestedField + "." + field;
                 final InnerHitBuilder innerHit =
                         new InnerHitBuilder(nestedField).setSize(chunkSize).setFetchSourceContext(new FetchSourceContext(false));
-                return OptionalThing.of(QueryBuilders.nestedQuery(nestedField, new NeuralQueryBuilder.Builder().modelId(modelId)
-                        .field(vectorField).query(text).k(LaRequestUtil.getOptionalRequest().map(req -> {
-                            final Object pageSize = req.getAttribute(Constants.REQUEST_PAGE_SIZE);
-                            if (pageSize != null) {
-                                return Integer.parseInt(pageSize.toString());
-                            }
-                            return Constants.DEFAULT_PAGE_SIZE;
-                        }).orElse(Constants.DEFAULT_PAGE_SIZE)).build(), ScoreMode.Max).innerHit(innerHit));
+                return OptionalThing.of(QueryBuilders.nestedQuery(nestedField,
+                        new NeuralQueryBuilder.Builder().modelId(modelId)
+                                .field(vectorField)
+                                .query(text)
+                                .k(LaRequestUtil.getOptionalRequest().map(req -> {
+                                    final Object pageSize = req.getAttribute(Constants.REQUEST_PAGE_SIZE);
+                                    if (pageSize != null) {
+                                        return Integer.parseInt(pageSize.toString());
+                                    }
+                                    return Constants.DEFAULT_PAGE_SIZE;
+                                }).orElse(Constants.DEFAULT_PAGE_SIZE))
+                                .build(),
+                        ScoreMode.Max).innerHit(innerHit));
             }
-            return OptionalThing.of(new NeuralQueryBuilder.Builder().modelId(modelId).field(field).query(text)
+            return OptionalThing.of(new NeuralQueryBuilder.Builder().modelId(modelId)
+                    .field(field)
+                    .query(text)
                     .k(LaRequestUtil.getOptionalRequest().map(req -> {
                         final Object pageSize = req.getAttribute(Constants.REQUEST_PAGE_SIZE);
                         if (pageSize != null) {
                             return Integer.parseInt(pageSize.toString());
                         }
                         return Constants.DEFAULT_PAGE_SIZE;
-                    }).orElse(Constants.DEFAULT_PAGE_SIZE)).build());
+                    }).orElse(Constants.DEFAULT_PAGE_SIZE))
+                    .build());
         }
         return OptionalThing.empty();
     }
