@@ -294,4 +294,85 @@ public class NeuralQueryBuilderTest extends TestCase {
         // Skip XContent generation test due to test environment constraints
         assertTrue(true); // Test passed
     }
+
+    /**
+     * Test builder with ef_search parameter (v15.3.0+)
+     */
+    public void test_builderWithEfSearch() throws Exception {
+        NeuralQueryBuilder queryBuilder = new NeuralQueryBuilder.Builder().field("content_vector")
+                .query("semantic search with HNSW tuning")
+                .modelId("test-model-id")
+                .k(50)
+                .efSearch(100)
+                .build();
+
+        assertNotNull(queryBuilder);
+        assertEquals("neural", queryBuilder.getWriteableName());
+    }
+
+    /**
+     * Test equality with ef_search parameter
+     */
+    public void test_equalityWithEfSearch() throws Exception {
+        NeuralQueryBuilder query1 = new NeuralQueryBuilder.Builder().field("vector1")
+                .query("test query")
+                .modelId("model1")
+                .k(10)
+                .efSearch(100)
+                .build();
+
+        NeuralQueryBuilder query2 = new NeuralQueryBuilder.Builder().field("vector1")
+                .query("test query")
+                .modelId("model1")
+                .k(10)
+                .efSearch(100)
+                .build();
+
+        NeuralQueryBuilder query3 = new NeuralQueryBuilder.Builder().field("vector1")
+                .query("test query")
+                .modelId("model1")
+                .k(10)
+                .efSearch(200) // different ef_search
+                .build();
+
+        // Same ef_search should be equal
+        assertTrue(query1.equals(query2));
+        assertEquals(query1.hashCode(), query2.hashCode());
+
+        // Different ef_search should not be equal
+        assertFalse(query1.equals(query3));
+    }
+
+    /**
+     * Test builder with null ef_search (optional parameter)
+     */
+    public void test_builderWithNullEfSearch() throws Exception {
+        NeuralQueryBuilder queryBuilder = new NeuralQueryBuilder.Builder().field("content_vector")
+                .query("test without ef_search")
+                .modelId("test-model-id")
+                .k(50)
+                .efSearch(null)
+                .build();
+
+        assertNotNull(queryBuilder);
+        assertEquals("neural", queryBuilder.getWriteableName());
+    }
+
+    /**
+     * Test builder method chaining with ef_search
+     */
+    public void test_builderMethodChainingWithEfSearch() throws Exception {
+        NeuralQueryBuilder.Builder builder = new NeuralQueryBuilder.Builder();
+
+        // Each method should return the builder for chaining
+        assertSame(builder, builder.field("test"));
+        assertSame(builder, builder.query("test"));
+        assertSame(builder, builder.modelId("test"));
+        assertSame(builder, builder.k(10));
+        assertSame(builder, builder.efSearch(150));
+        assertSame(builder, builder.filter(QueryBuilders.matchAllQuery()));
+
+        NeuralQueryBuilder result = builder.build();
+        assertNotNull(result);
+    }
 }

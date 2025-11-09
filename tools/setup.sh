@@ -208,7 +208,11 @@ if [[ ${acknowledged} != "true" ]] ; then
 fi
 
 cat << EOS
---- system properties: start ---
+==============================================
+System Properties (Required)
+==============================================
+Copy these properties to Fess Admin Panel (Admin > General > System Properties):
+
 fess.semantic_search.pipeline=${pipeline_name}
 fess.semantic_search.content.nested_field=content_vector
 fess.semantic_search.content.chunk_field=content_chunk
@@ -219,7 +223,33 @@ fess.semantic_search.content.engine=lucene
 fess.semantic_search.content.space_type=${space_type}
 fess.semantic_search.content.model_id=${model_id}
 fess.semantic_search.min_score=0.5
---- system properties: end ---
+
+==============================================
+Optional: Performance Tuning (v15.3.0+)
+==============================================
+# Uncomment and add these for better performance:
+
+# HNSW search-time parameter (higher = better recall, slower search)
+# fess.semantic_search.content.param.ef_search=100
+
+# Enable performance monitoring for debugging
+# fess.semantic_search.performance.monitoring.enabled=true
+
+# Enable batch inference (requires compatible ML model setup)
+# fess.semantic_search.batch_inference.enabled=true
+
+==============================================
+Optional: Diversity with MMR (Experimental)
+==============================================
+# Uncomment to enable Maximal Marginal Relevance for diverse results:
+
+# Enable MMR
+# fess.semantic_search.mmr.enabled=true
+
+# Lambda: 1.0 = only relevance, 0.0 = only diversity, 0.5 = balanced
+# fess.semantic_search.mmr.lambda=0.7
+
+==============================================
 EOS
 
 rm -f $tmp_file

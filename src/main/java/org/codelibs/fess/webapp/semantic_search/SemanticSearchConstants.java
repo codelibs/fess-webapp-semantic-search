@@ -53,6 +53,9 @@ public class SemanticSearchConstants {
     /** Configuration key for HNSW parameter ef_construction. */
     public static final String CONTENT_PARAM_EF_CONSTRUCTION = PREFIX + "content.param.ef_construction";
 
+    /** Configuration key for HNSW parameter ef_search. */
+    public static final String CONTENT_PARAM_EF_SEARCH = PREFIX + "content.param.ef_search";
+
     /** Configuration key for content vector field name. */
     public static final String CONTENT_FIELD = PREFIX + "content.field";
 
@@ -70,6 +73,18 @@ public class SemanticSearchConstants {
 
     /** Configuration key for minimum content length requirement. */
     public static final String MIN_CONTENT_LENGTH = PREFIX + "min_content_length";
+
+    /** Configuration key for MMR (Maximal Marginal Relevance) feature enablement. */
+    public static final String MMR_ENABLED = PREFIX + "mmr.enabled";
+
+    /** Configuration key for MMR lambda parameter (0.0-1.0, where 1.0 favors relevance and 0.0 favors diversity). */
+    public static final String MMR_LAMBDA = PREFIX + "mmr.lambda";
+
+    /** Configuration key for batch inference enablement. */
+    public static final String BATCH_INFERENCE_ENABLED = PREFIX + "batch_inference.enabled";
+
+    /** Configuration key for performance monitoring enablement. */
+    public static final String PERFORMANCE_MONITORING_ENABLED = PREFIX + "performance.monitoring.enabled";
 
     /** Component name for SemanticSearchHelper in DI container. */
     public static final String SEMANTIC_SEARCH_HELPER = "semanticSearchHelper";
