@@ -71,7 +71,35 @@ fess.semantic_search.content.field=content_vector
 fess.semantic_search.content.dimension=384
 fess.semantic_search.content.method=hnsw
 fess.semantic_search.content.engine=lucene
+fess.semantic_search.content.space_type=cosinesimil
 fess.semantic_search.content.model_id=<your-model-id>
+```
+
+#### Optional: Performance Tuning (v15.3.0+)
+
+For better performance, you can add these optional parameters:
+
+```properties
+# HNSW search-time parameter (higher = better recall, slower search)
+fess.semantic_search.content.param.ef_search=100
+
+# Enable performance monitoring for debugging
+fess.semantic_search.performance.monitoring.enabled=true
+
+# Enable batch inference (requires compatible ML model setup)
+fess.semantic_search.batch_inference.enabled=true
+```
+
+#### Optional: Diversity with MMR (Experimental)
+
+To improve result diversity using Maximal Marginal Relevance:
+
+```properties
+# Enable MMR
+fess.semantic_search.mmr.enabled=true
+
+# Lambda: 1.0 = only relevance, 0.0 = only diversity, 0.5 = balanced
+fess.semantic_search.mmr.lambda=0.7
 ```
 
 ### 6. Create Index and Start Crawling
@@ -120,8 +148,23 @@ The plugin supports various pre-trained transformer models:
 
 | Property | Description | Default |
 |----------|-------------|---------|
-| `fess.semantic_search.content.param.m` | HNSW M parameter | `16` |
-| `fess.semantic_search.content.param.ef_construction` | HNSW ef_construction parameter | `100` |
+| `fess.semantic_search.content.param.m` | HNSW M parameter (higher = better recall, more memory) | `16` |
+| `fess.semantic_search.content.param.ef_construction` | HNSW ef_construction parameter (higher = better quality, slower indexing) | `100` |
+| `fess.semantic_search.content.param.ef_search` | HNSW ef_search parameter (higher = better recall, slower search) | Not set (OpenSearch default) |
+
+### Performance Tuning (v15.3.0+)
+
+| Property | Description | Default |
+|----------|-------------|---------|
+| `fess.semantic_search.performance.monitoring.enabled` | Enable detailed performance logging | `false` |
+| `fess.semantic_search.batch_inference.enabled` | Enable batch inference for better GPU utilization | `false` |
+
+### Experimental Features (v15.3.0+)
+
+| Property | Description | Default |
+|----------|-------------|---------|
+| `fess.semantic_search.mmr.enabled` | Enable Maximal Marginal Relevance for diversity | `false` |
+| `fess.semantic_search.mmr.lambda` | MMR lambda (1.0=relevance, 0.0=diversity) | `0.5` |
 
 ## 🏗️ Architecture
 
@@ -220,10 +263,27 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 - [Docker Fess](https://github.com/codelibs/docker-fess)
 - [Issue Tracker](https://github.com/codelibs/fess-webapp-semantic-search/issues)
 
+## 🚀 OpenSearch 3.3 Optimization (v15.3.0+)
+
+This plugin is optimized for OpenSearch 3.3 with significant performance improvements and new features:
+
+### Key Improvements
+- **Concurrent Segment Search**: Enabled by default, up to 2.5x faster k-NN queries
+- **Improved HNSW**: Default `space_type` changed to `cosinesimil` for better semantic search accuracy
+- **Performance Monitoring**: Optional detailed query performance tracking
+- **Advanced Tuning**: Fine-grained control over HNSW parameters including `ef_search`
+
+### Migration from Earlier Versions
+If upgrading from v15.2.x or earlier:
+1. The default `space_type` has changed from `l2` to `cosinesimil`
+2. To maintain compatibility with existing indices, explicitly set: `fess.semantic_search.content.space_type=l2`
+3. For new deployments, the new default `cosinesimil` is recommended
+
 ## 📊 Version Compatibility
 
 | Plugin Version | Fess Version | OpenSearch Version |
 |----------------|--------------|-------------------|
+| 15.3.x | 15.3+ | 3.3.x (recommended) |
 | 15.0.x | 15.0+ | 2.x |
 | 14.9.x | 14.9+ | 2.x |
 

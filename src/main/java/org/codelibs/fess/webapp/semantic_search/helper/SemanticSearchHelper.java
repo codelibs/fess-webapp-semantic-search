@@ -23,6 +23,7 @@ import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.C
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_MODEL_ID;
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_NESTED_FIELD;
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_PARAM_EF_CONSTRUCTION;
+import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_PARAM_EF_SEARCH;
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_PARAM_M;
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_SPACE_TYPE;
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.PIPELINE;
@@ -114,7 +115,7 @@ public class SemanticSearchHelper {
             }
             final String nestedField = System.getProperty(CONTENT_NESTED_FIELD); // ex. content_vector
             final String chunkField = System.getProperty(CONTENT_CHUNK_FIELD); // ex. content_chunk
-            final String spaceType = System.getProperty(CONTENT_SPACE_TYPE, "l2"); // ex. l2
+            final String spaceType = System.getProperty(CONTENT_SPACE_TYPE, "cosinesimil"); // ex. cosinesimil (changed from l2 for better semantic search)
             final String m = System.getProperty(CONTENT_PARAM_M, "16"); // ex. 16
             final String ef = System.getProperty(CONTENT_PARAM_EF_CONSTRUCTION, "100"); // ex. 100
             final String fieldDef;
@@ -355,36 +356,41 @@ public class SemanticSearchHelper {
         final String modelId = System.getProperty(CONTENT_MODEL_ID);
         final String field = System.getProperty(CONTENT_FIELD); // ex. knn
         if (StringUtil.isNotBlank(modelId) && StringUtil.isNotBlank(field) && StringUtil.isNotBlank(text)) {
+            final String efSearchValue = System.getProperty(CONTENT_PARAM_EF_SEARCH);
+            final Integer efSearch = StringUtil.isNotBlank(efSearchValue) ? Integer.valueOf(efSearchValue) : null;
+
+            final int k = LaRequestUtil.getOptionalRequest().map(req -> {
+                final Object pageSize = req.getAttribute(Constants.REQUEST_PAGE_SIZE);
+                if (pageSize != null) {
+                    return Integer.parseInt(pageSize.toString());
+                }
+                return Constants.DEFAULT_PAGE_SIZE;
+            }).orElse(Constants.DEFAULT_PAGE_SIZE);
+
             final String nestedField = System.getProperty(CONTENT_NESTED_FIELD); // ex. content_vector
             if (StringUtil.isNotBlank(nestedField)) {
                 final String vectorField = nestedField + "." + field;
                 final InnerHitBuilder innerHit =
                         new InnerHitBuilder(nestedField).setSize(chunkSize).setFetchSourceContext(new FetchSourceContext(false));
-                return OptionalThing.of(QueryBuilders.nestedQuery(nestedField,
-                        new NeuralQueryBuilder.Builder().modelId(modelId)
-                                .field(vectorField)
-                                .query(text)
-                                .k(LaRequestUtil.getOptionalRequest().map(req -> {
-                                    final Object pageSize = req.getAttribute(Constants.REQUEST_PAGE_SIZE);
-                                    if (pageSize != null) {
-                                        return Integer.parseInt(pageSize.toString());
-                                    }
-                                    return Constants.DEFAULT_PAGE_SIZE;
-                                }).orElse(Constants.DEFAULT_PAGE_SIZE))
-                                .build(),
-                        ScoreMode.Max).innerHit(innerHit));
+                final NeuralQueryBuilder.Builder builder = new NeuralQueryBuilder.Builder()
+                        .modelId(modelId)
+                        .field(vectorField)
+                        .query(text)
+                        .k(k);
+                if (efSearch != null) {
+                    builder.efSearch(efSearch);
+                }
+                return OptionalThing.of(QueryBuilders.nestedQuery(nestedField, builder.build(), ScoreMode.Max).innerHit(innerHit));
             }
-            return OptionalThing.of(new NeuralQueryBuilder.Builder().modelId(modelId)
+            final NeuralQueryBuilder.Builder builder = new NeuralQueryBuilder.Builder()
+                    .modelId(modelId)
                     .field(field)
                     .query(text)
-                    .k(LaRequestUtil.getOptionalRequest().map(req -> {
-                        final Object pageSize = req.getAttribute(Constants.REQUEST_PAGE_SIZE);
-                        if (pageSize != null) {
-                            return Integer.parseInt(pageSize.toString());
-                        }
-                        return Constants.DEFAULT_PAGE_SIZE;
-                    }).orElse(Constants.DEFAULT_PAGE_SIZE))
-                    .build());
+                    .k(k);
+            if (efSearch != null) {
+                builder.efSearch(efSearch);
+            }
+            return OptionalThing.of(builder.build());
         }
         return OptionalThing.empty();
     }

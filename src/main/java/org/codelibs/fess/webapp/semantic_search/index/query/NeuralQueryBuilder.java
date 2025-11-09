@@ -44,6 +44,8 @@ public class NeuralQueryBuilder extends AbstractQueryBuilder<NeuralQueryBuilder>
 
     private static final ParseField FILTER_FIELD = new ParseField("filter");
 
+    private static final ParseField EF_SEARCH_FIELD = new ParseField("ef_search");
+
     private static final int DEFAULT_K = 10;
 
     /** The field name to search against. */
@@ -61,6 +63,9 @@ public class NeuralQueryBuilder extends AbstractQueryBuilder<NeuralQueryBuilder>
     /** Optional filter to apply to the neural search results. */
     protected QueryBuilder filter;
 
+    /** Optional ef_search parameter for HNSW algorithm tuning. */
+    protected Integer efSearch;
+
     /**
      * Constructs a NeuralQueryBuilder from stream input.
      *
@@ -74,6 +79,7 @@ public class NeuralQueryBuilder extends AbstractQueryBuilder<NeuralQueryBuilder>
         this.modelId = in.readString();
         this.k = in.readVInt();
         this.filter = in.readOptionalNamedWriteable(QueryBuilder.class);
+        this.efSearch = in.readOptionalVInt();
     }
 
     private NeuralQueryBuilder() {
@@ -95,6 +101,7 @@ public class NeuralQueryBuilder extends AbstractQueryBuilder<NeuralQueryBuilder>
         private String queryText;
         private String fieldName;
         private QueryBuilder filter;
+        private Integer efSearch;
 
         /**
          * Sets the field name to search against.
@@ -152,6 +159,17 @@ public class NeuralQueryBuilder extends AbstractQueryBuilder<NeuralQueryBuilder>
         }
 
         /**
+         * Sets the ef_search parameter for HNSW algorithm tuning.
+         *
+         * @param efSearch the ef_search value
+         * @return this builder instance
+         */
+        public Builder efSearch(final Integer efSearch) {
+            this.efSearch = efSearch;
+            return this;
+        }
+
+        /**
          * Builds and returns a new NeuralQueryBuilder instance.
          *
          * @return the constructed NeuralQueryBuilder
@@ -163,6 +181,7 @@ public class NeuralQueryBuilder extends AbstractQueryBuilder<NeuralQueryBuilder>
             query.queryText = queryText;
             query.fieldName = fieldName;
             query.filter = filter;
+            query.efSearch = efSearch;
             return query;
         }
     }
@@ -179,6 +198,7 @@ public class NeuralQueryBuilder extends AbstractQueryBuilder<NeuralQueryBuilder>
         out.writeString(this.modelId);
         out.writeVInt(this.k);
         out.writeOptionalNamedWriteable(this.filter);
+        out.writeOptionalVInt(this.efSearch);
     }
 
     @Override
@@ -190,6 +210,9 @@ public class NeuralQueryBuilder extends AbstractQueryBuilder<NeuralQueryBuilder>
         xContentBuilder.field(K_FIELD.getPreferredName(), k);
         if (filter != null) {
             xContentBuilder.field(FILTER_FIELD.getPreferredName(), filter);
+        }
+        if (efSearch != null) {
+            xContentBuilder.field(EF_SEARCH_FIELD.getPreferredName(), efSearch);
         }
         printBoostAndQueryName(xContentBuilder);
         xContentBuilder.endObject();
@@ -215,11 +238,12 @@ public class NeuralQueryBuilder extends AbstractQueryBuilder<NeuralQueryBuilder>
         equalsBuilder.append(modelId, obj.modelId);
         equalsBuilder.append(k, obj.k);
         equalsBuilder.append(filter, obj.filter);
+        equalsBuilder.append(efSearch, obj.efSearch);
         return equalsBuilder.isEquals();
     }
 
     @Override
     protected int doHashCode() {
-        return new HashCodeBuilder().append(fieldName).append(queryText).append(modelId).append(k).toHashCode();
+        return new HashCodeBuilder().append(fieldName).append(queryText).append(modelId).append(k).append(efSearch).toHashCode();
     }
 }

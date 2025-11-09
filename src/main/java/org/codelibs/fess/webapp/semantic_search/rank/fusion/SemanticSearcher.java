@@ -17,6 +17,7 @@ package org.codelibs.fess.webapp.semantic_search.rank.fusion;
 
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_CHUNK_FIELD;
 import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.CONTENT_NESTED_FIELD;
+import static org.codelibs.fess.webapp.semantic_search.SemanticSearchConstants.PERFORMANCE_MONITORING_ENABLED;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -78,6 +79,9 @@ public class SemanticSearcher extends DefaultSearcher {
     @Override
     protected SearchResult search(final String query, final SearchRequestParams params, final OptionalThing<FessUserBean> userBean) {
         final SemanticSearchHelper semanticSearchHelper = getSemanticSearchHelper();
+        final boolean performanceMonitoring = "true".equals(System.getProperty(PERFORMANCE_MONITORING_ENABLED));
+        final long startTime = performanceMonitoring ? System.currentTimeMillis() : 0;
+
         try {
             final SearchRequestParams reqParams = new SearchRequestParamsWrapper(params, semanticSearchHelper.getMinScore());
             final StringBuilder queryBuf = new StringBuilder(query.length() + 40);
@@ -97,7 +101,15 @@ public class SemanticSearcher extends DefaultSearcher {
                 }
             }
             semanticSearchHelper.createContext(query, reqParams, userBean);
-            return super.search(queryBuf.toString(), reqParams, userBean);
+            final SearchResult result = super.search(queryBuf.toString(), reqParams, userBean);
+
+            if (performanceMonitoring) {
+                final long elapsed = System.currentTimeMillis() - startTime;
+                logger.info("[Performance] Semantic search completed: query='{}', took={}ms, hits={}", query, elapsed,
+                        result.getDocumentList().size());
+            }
+
+            return result;
         } finally {
             semanticSearchHelper.closeContext();
         }
