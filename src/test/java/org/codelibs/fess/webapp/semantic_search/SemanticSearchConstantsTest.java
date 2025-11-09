@@ -57,6 +57,7 @@ public class SemanticSearchConstantsTest extends TestCase {
         assertEquals("fess.semantic_search.content.space_type", SemanticSearchConstants.CONTENT_SPACE_TYPE);
         assertEquals("fess.semantic_search.content.param.m", SemanticSearchConstants.CONTENT_PARAM_M);
         assertEquals("fess.semantic_search.content.param.ef_construction", SemanticSearchConstants.CONTENT_PARAM_EF_CONSTRUCTION);
+        assertEquals("fess.semantic_search.content.param.ef_search", SemanticSearchConstants.CONTENT_PARAM_EF_SEARCH);
         assertEquals("fess.semantic_search.content.field", SemanticSearchConstants.CONTENT_FIELD);
         assertEquals("fess.semantic_search.content.nested_field", SemanticSearchConstants.CONTENT_NESTED_FIELD);
         assertEquals("fess.semantic_search.content.chunk_field", SemanticSearchConstants.CONTENT_CHUNK_FIELD);
@@ -64,6 +65,24 @@ public class SemanticSearchConstantsTest extends TestCase {
         assertEquals("fess.semantic_search.min_score", SemanticSearchConstants.MIN_SCORE);
         assertEquals("fess.semantic_search.min_content_length", SemanticSearchConstants.MIN_CONTENT_LENGTH);
         assertEquals("semanticSearchHelper", SemanticSearchConstants.SEMANTIC_SEARCH_HELPER);
+    }
+
+    /**
+     * Test v15.3.0+ new constant values
+     */
+    public void test_v15_3_0_newConstants() throws Exception {
+        // HNSW ef_search parameter
+        assertEquals("fess.semantic_search.content.param.ef_search", SemanticSearchConstants.CONTENT_PARAM_EF_SEARCH);
+
+        // MMR (Maximal Marginal Relevance) constants
+        assertEquals("fess.semantic_search.mmr.enabled", SemanticSearchConstants.MMR_ENABLED);
+        assertEquals("fess.semantic_search.mmr.lambda", SemanticSearchConstants.MMR_LAMBDA);
+
+        // Batch inference
+        assertEquals("fess.semantic_search.batch_inference.enabled", SemanticSearchConstants.BATCH_INFERENCE_ENABLED);
+
+        // Performance monitoring
+        assertEquals("fess.semantic_search.performance.monitoring.enabled", SemanticSearchConstants.PERFORMANCE_MONITORING_ENABLED);
     }
 
     /**
@@ -130,8 +149,8 @@ public class SemanticSearchConstantsTest extends TestCase {
     public void test_contentConstantsGrouping() throws Exception {
         // All content-related constants should start with CONTENT_
         String[] contentConstants = { "CONTENT_MODEL_ID", "CONTENT_DIMENSION", "CONTENT_ENGINE", "CONTENT_METHOD", "CONTENT_SPACE_TYPE",
-                "CONTENT_PARAM_M", "CONTENT_PARAM_EF_CONSTRUCTION", "CONTENT_FIELD", "CONTENT_NESTED_FIELD", "CONTENT_CHUNK_FIELD",
-                "CONTENT_CHUNK_SIZE" };
+                "CONTENT_PARAM_M", "CONTENT_PARAM_EF_CONSTRUCTION", "CONTENT_PARAM_EF_SEARCH", "CONTENT_FIELD", "CONTENT_NESTED_FIELD",
+                "CONTENT_CHUNK_FIELD", "CONTENT_CHUNK_SIZE" };
 
         for (String constantName : contentConstants) {
             Field field = SemanticSearchConstants.class.getField(constantName);
@@ -145,13 +164,16 @@ public class SemanticSearchConstantsTest extends TestCase {
      */
     public void test_parameterConstants() throws Exception {
         String paramM = SemanticSearchConstants.CONTENT_PARAM_M;
-        String paramEf = SemanticSearchConstants.CONTENT_PARAM_EF_CONSTRUCTION;
+        String paramEfConstruction = SemanticSearchConstants.CONTENT_PARAM_EF_CONSTRUCTION;
+        String paramEfSearch = SemanticSearchConstants.CONTENT_PARAM_EF_SEARCH;
 
         assertTrue("CONTENT_PARAM_M should contain 'param'", paramM.contains("param"));
-        assertTrue("CONTENT_PARAM_EF_CONSTRUCTION should contain 'param'", paramEf.contains("param"));
+        assertTrue("CONTENT_PARAM_EF_CONSTRUCTION should contain 'param'", paramEfConstruction.contains("param"));
+        assertTrue("CONTENT_PARAM_EF_SEARCH should contain 'param'", paramEfSearch.contains("param"));
 
         assertTrue("CONTENT_PARAM_M should end with '.m'", paramM.endsWith(".m"));
-        assertTrue("CONTENT_PARAM_EF_CONSTRUCTION should end with '.ef_construction'", paramEf.endsWith(".ef_construction"));
+        assertTrue("CONTENT_PARAM_EF_CONSTRUCTION should end with '.ef_construction'", paramEfConstruction.endsWith(".ef_construction"));
+        assertTrue("CONTENT_PARAM_EF_SEARCH should end with '.ef_search'", paramEfSearch.endsWith(".ef_search"));
     }
 
     /**
@@ -194,8 +216,9 @@ public class SemanticSearchConstantsTest extends TestCase {
             }
         }
 
-        // Expect at least 15 string constants (adjust if more are added)
-        assertTrue("Should have at least 15 string constants, found: " + stringConstantCount, stringConstantCount >= 15);
+        // v15.3.0 added 5 new constants: CONTENT_PARAM_EF_SEARCH, MMR_ENABLED, MMR_LAMBDA, BATCH_INFERENCE_ENABLED, PERFORMANCE_MONITORING_ENABLED
+        // Expect at least 20 string constants (15 original + 5 new)
+        assertTrue("Should have at least 20 string constants, found: " + stringConstantCount, stringConstantCount >= 20);
 
         logger.info("Found {} string constants in SemanticSearchConstants", stringConstantCount);
     }
