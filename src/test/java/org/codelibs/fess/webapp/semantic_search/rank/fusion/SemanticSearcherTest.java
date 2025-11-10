@@ -32,6 +32,7 @@ import org.codelibs.fess.helper.SystemHelper;
 import org.codelibs.fess.mylasta.action.FessUserBean;
 import org.codelibs.fess.mylasta.direction.FessConfig;
 import org.codelibs.fess.opensearch.client.SearchEngineClient;
+import org.codelibs.fess.opensearch.client.SearchEngineClient.SearchCondition;
 import org.codelibs.fess.query.QueryFieldConfig;
 import org.codelibs.fess.query.parser.QueryParser;
 import org.codelibs.fess.rank.fusion.RankFusionProcessor;
@@ -40,6 +41,7 @@ import org.codelibs.fess.webapp.semantic_search.helper.SemanticSearchHelper;
 import org.dbflute.optional.OptionalThing;
 import org.dbflute.utflute.lastadi.LastaDiTestCase;
 import org.opensearch.action.search.SearchRequest;
+import org.opensearch.action.search.SearchRequestBuilder;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.search.SearchHit;
 import org.opensearch.search.SearchHit.NestedIdentity;
@@ -401,7 +403,7 @@ public class SemanticSearcherTest extends LastaDiTestCase {
         OptionalThing<FessUserBean> userBean = OptionalThing.empty();
 
         try {
-            SearchCondition<?> condition = semanticSearcher.createSearchCondition(query, params, userBean);
+            SearchCondition<SearchRequestBuilder> condition = semanticSearcher.createSearchCondition(query, params, userBean);
             assertNotNull(condition);
             // The condition should include chunk field in addition to original fields
         } catch (Exception e) {

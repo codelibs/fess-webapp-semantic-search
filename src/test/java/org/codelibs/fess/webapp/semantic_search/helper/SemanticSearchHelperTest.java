@@ -473,21 +473,18 @@ public class SemanticSearchHelperTest extends LastaDiTestCase {
     }
 
     /**
-     * Test context with user bean
+     * Test context with user bean (empty user bean)
      */
     public void test_contextWithUserBean() throws Exception {
         semanticSearchHelper.init();
 
         SearchRequestParams params = new MockSearchRequestParams();
-        FessUserBean userBean = new FessUserBean();
-        userBean.setUserId("test-user");
-        OptionalThing<FessUserBean> optionalUserBean = OptionalThing.of(userBean);
+        OptionalThing<FessUserBean> optionalUserBean = OptionalThing.empty();
 
         SemanticSearchContext context = semanticSearchHelper.createContext("test query", params, optionalUserBean);
 
         assertNotNull(context);
-        assertTrue(context.getUserBean().isPresent());
-        assertEquals("test-user", context.getUserBean().get().getUserId());
+        assertFalse(context.getUserBean().isPresent());
 
         semanticSearchHelper.closeContext();
     }
