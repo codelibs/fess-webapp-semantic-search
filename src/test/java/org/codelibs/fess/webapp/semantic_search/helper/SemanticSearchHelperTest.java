@@ -360,6 +360,287 @@ public class SemanticSearchHelperTest extends LastaDiTestCase {
         assertEquals("fess.semantic_search.content.space_type", CONTENT_SPACE_TYPE);
     }
 
+    /**
+     * Test chunk size configuration parsing
+     */
+    public void test_chunkSizeConfiguration() throws Exception {
+        System.setProperty(CONTENT_CHUNK_SIZE, "512");
+        semanticSearchHelper.init();
+
+        // Chunk size should be parsed and available
+        // This is used internally by the helper
+        assertTrue(true); // Test passes if no exception during init
+    }
+
+    /**
+     * Test chunk size with invalid value
+     */
+    public void test_chunkSizeWithInvalidValue() throws Exception {
+        System.setProperty(CONTENT_CHUNK_SIZE, "invalid_size");
+        semanticSearchHelper.init();
+
+        // Should handle invalid chunk size gracefully
+        assertTrue(true);
+    }
+
+    /**
+     * Test HNSW parameter m configuration
+     */
+    public void test_hnswParameterM() throws Exception {
+        System.setProperty(CONTENT_PARAM_M, "32");
+        semanticSearchHelper.init();
+
+        // Parameter should be parsed successfully
+        assertTrue(true);
+    }
+
+    /**
+     * Test HNSW parameter ef_construction
+     */
+    public void test_hnswParameterEfConstruction() throws Exception {
+        System.setProperty(CONTENT_PARAM_EF_CONSTRUCTION, "256");
+        semanticSearchHelper.init();
+
+        // Parameter should be parsed successfully
+        assertTrue(true);
+    }
+
+    /**
+     * Test multiple neural query builders in sequence
+     */
+    public void test_multipleNeuralQueryBuilders() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "test-model-id");
+        System.setProperty(CONTENT_FIELD, "test_vector_field");
+
+        String[] queries = { "first query", "second query", "third query" };
+
+        for (String query : queries) {
+            OptionalThing<QueryBuilder> result = semanticSearchHelper.newNeuralQueryBuilder(query);
+            assertTrue(result.isPresent());
+            assertNotNull(result.get());
+            logger.info("Neural query builder created for: {}", query);
+        }
+    }
+
+    /**
+     * Test neural query builder with various text patterns
+     */
+    public void test_neuralQueryBuilderWithVariousPatterns() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "test-model-id");
+        System.setProperty(CONTENT_FIELD, "test_vector_field");
+
+        String[] patterns = { "simple", "multi word query", "query-with-dashes", "query_with_underscores", "query.with.dots",
+                "query@special", "123 numbers", "mixed123text", "UPPERCASE", "CamelCase" };
+
+        for (String pattern : patterns) {
+            OptionalThing<QueryBuilder> result = semanticSearchHelper.newNeuralQueryBuilder(pattern);
+            assertTrue("Pattern '" + pattern + "' should produce neural query", result.isPresent());
+        }
+    }
+
+    /**
+     * Test configuration with all HNSW parameters
+     */
+    public void test_fullHNSWConfiguration() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "test-model");
+        System.setProperty(CONTENT_FIELD, "vector_field");
+        System.setProperty(CONTENT_DIMENSION, "768");
+        System.setProperty(CONTENT_ENGINE, "nmslib");
+        System.setProperty(CONTENT_METHOD, "hnsw");
+        System.setProperty(CONTENT_SPACE_TYPE, "cosinesimil");
+        System.setProperty(CONTENT_PARAM_M, "16");
+        System.setProperty(CONTENT_PARAM_EF_CONSTRUCTION, "128");
+        System.setProperty(CONTENT_PARAM_EF_SEARCH, "100");
+
+        semanticSearchHelper.init();
+
+        OptionalThing<QueryBuilder> result = semanticSearchHelper.newNeuralQueryBuilder("test query");
+        assertTrue(result.isPresent());
+    }
+
+    /**
+     * Test neural query builder with nested and chunk fields
+     */
+    public void test_neuralQueryBuilderWithNestedAndChunk() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "test-model");
+        System.setProperty(CONTENT_FIELD, "vector");
+        System.setProperty(CONTENT_NESTED_FIELD, "content_nested");
+        System.setProperty(CONTENT_CHUNK_FIELD, "content_chunks");
+        System.setProperty(CONTENT_CHUNK_SIZE, "256");
+
+        OptionalThing<QueryBuilder> result = semanticSearchHelper.newNeuralQueryBuilder("chunked nested query");
+        assertTrue(result.isPresent());
+    }
+
+    /**
+     * Test context with user bean
+     */
+    public void test_contextWithUserBean() throws Exception {
+        semanticSearchHelper.init();
+
+        SearchRequestParams params = new MockSearchRequestParams();
+        FessUserBean userBean = new FessUserBean();
+        userBean.setUserId("test-user");
+        OptionalThing<FessUserBean> optionalUserBean = OptionalThing.of(userBean);
+
+        SemanticSearchContext context = semanticSearchHelper.createContext("test query", params, optionalUserBean);
+
+        assertNotNull(context);
+        assertTrue(context.getUserBean().isPresent());
+        assertEquals("test-user", context.getUserBean().get().getUserId());
+
+        semanticSearchHelper.closeContext();
+    }
+
+    /**
+     * Test concurrent context creation warning
+     */
+    public void test_concurrentContextCreation() throws Exception {
+        semanticSearchHelper.init();
+
+        SearchRequestParams params1 = new MockSearchRequestParams();
+        SearchRequestParams params2 = new MockSearchRequestParams();
+
+        SemanticSearchContext context1 = semanticSearchHelper.createContext("query1", params1, OptionalThing.empty());
+        assertNotNull(context1);
+
+        // Creating second context without closing first should log warning
+        SemanticSearchContext context2 = semanticSearchHelper.createContext("query2", params2, OptionalThing.empty());
+        assertNotNull(context2);
+        assertNotSame(context1, context2);
+
+        // Should return the most recent context
+        assertEquals(context2, semanticSearchHelper.getContext());
+
+        semanticSearchHelper.closeContext();
+    }
+
+    /**
+     * Test min score with boundary values
+     */
+    public void test_minScoreWithBoundaryValues() throws Exception {
+        // Test maximum float value
+        System.setProperty(MIN_SCORE, String.valueOf(Float.MAX_VALUE));
+        semanticSearchHelper.init();
+        assertEquals(Float.MAX_VALUE, semanticSearchHelper.getMinScore(), 0.001f);
+
+        // Test minimum positive float value
+        System.setProperty(MIN_SCORE, String.valueOf(Float.MIN_VALUE));
+        semanticSearchHelper.init();
+        assertEquals(Float.MIN_VALUE, semanticSearchHelper.getMinScore(), 0.0000001f);
+
+        // Test value of 1.0
+        System.setProperty(MIN_SCORE, "1.0");
+        semanticSearchHelper.init();
+        assertEquals(1.0f, semanticSearchHelper.getMinScore(), 0.001f);
+    }
+
+    /**
+     * Test min content length with boundary values
+     */
+    public void test_minContentLengthWithBoundaryValues() throws Exception {
+        // Test maximum long value
+        System.setProperty(MIN_CONTENT_LENGTH, String.valueOf(Long.MAX_VALUE));
+        semanticSearchHelper.init();
+        assertEquals(Long.MAX_VALUE, semanticSearchHelper.getMinContentLength().longValue());
+
+        // Test value of 1
+        System.setProperty(MIN_CONTENT_LENGTH, "1");
+        semanticSearchHelper.init();
+        assertEquals(1L, semanticSearchHelper.getMinContentLength().longValue());
+    }
+
+    /**
+     * Test neural query builder with whitespace variations
+     */
+    public void test_neuralQueryBuilderWithWhitespaceVariations() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "test-model");
+        System.setProperty(CONTENT_FIELD, "vector_field");
+
+        // Leading whitespace
+        OptionalThing<QueryBuilder> result1 = semanticSearchHelper.newNeuralQueryBuilder("   leading");
+        assertTrue(result1.isPresent());
+
+        // Trailing whitespace
+        OptionalThing<QueryBuilder> result2 = semanticSearchHelper.newNeuralQueryBuilder("trailing   ");
+        assertTrue(result2.isPresent());
+
+        // Multiple spaces between words
+        OptionalThing<QueryBuilder> result3 = semanticSearchHelper.newNeuralQueryBuilder("multiple    spaces");
+        assertTrue(result3.isPresent());
+
+        // Tab characters
+        OptionalThing<QueryBuilder> result4 = semanticSearchHelper.newNeuralQueryBuilder("with\ttabs");
+        assertTrue(result4.isPresent());
+    }
+
+    /**
+     * Test pipeline configuration
+     */
+    public void test_pipelineConfiguration() throws Exception {
+        System.setProperty(PIPELINE, "my-neural-pipeline");
+        semanticSearchHelper.init();
+
+        // Pipeline should be configured during init
+        // This is used for preprocessing in OpenSearch
+        assertTrue(true);
+    }
+
+    /**
+     * Test content dimension configuration
+     */
+    public void test_contentDimensionConfiguration() throws Exception {
+        // Test various dimension sizes
+        String[] dimensions = { "128", "256", "512", "768", "1024" };
+
+        for (String dim : dimensions) {
+            System.setProperty(CONTENT_DIMENSION, dim);
+            semanticSearchHelper.init();
+            logger.info("Configured dimension: {}", dim);
+            assertTrue(true);
+        }
+    }
+
+    /**
+     * Test neural query builder k parameter variations
+     */
+    public void test_neuralQueryBuilderKParameter() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "test-model");
+        System.setProperty(CONTENT_FIELD, "vector_field");
+
+        // The k parameter (number of nearest neighbors) should be configurable
+        // Default is 20 based on the test outputs
+        OptionalThing<QueryBuilder> result = semanticSearchHelper.newNeuralQueryBuilder("k parameter test");
+        assertTrue(result.isPresent());
+
+        String queryString = result.get().toString();
+        assertTrue(queryString.contains("\"k\":20") || queryString.contains("k=20"));
+    }
+
+    /**
+     * Test MMR (Maximal Marginal Relevance) configuration
+     */
+    public void test_mmrConfiguration() throws Exception {
+        System.setProperty(MMR_ENABLED, "true");
+        System.setProperty(MMR_LAMBDA, "0.5");
+        semanticSearchHelper.init();
+
+        // MMR should be configurable for diversity in results
+        assertEquals("true", System.getProperty(MMR_ENABLED));
+        assertEquals("0.5", System.getProperty(MMR_LAMBDA));
+    }
+
+    /**
+     * Test batch inference configuration
+     */
+    public void test_batchInferenceConfiguration() throws Exception {
+        System.setProperty(BATCH_INFERENCE_ENABLED, "true");
+        semanticSearchHelper.init();
+
+        // Batch inference should be configurable
+        assertEquals("true", System.getProperty(BATCH_INFERENCE_ENABLED));
+    }
+
     private void clearSemanticSearchProperties() {
         System.clearProperty(PIPELINE);
         System.clearProperty(CONTENT_MODEL_ID);

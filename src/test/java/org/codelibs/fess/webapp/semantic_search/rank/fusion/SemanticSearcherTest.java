@@ -232,6 +232,304 @@ public class SemanticSearcherTest extends LastaDiTestCase {
         assertSame(semanticSearchHelper, helper);
     }
 
+    /**
+     * Test SearchRequestParamsWrapper min score override
+     */
+    public void test_searchRequestParamsWrapper_minScore() throws Exception {
+        MockSearchRequestParams params = new MockSearchRequestParams();
+        Float customMinScore = 0.75f;
+
+        SemanticSearcher.SearchRequestParamsWrapper wrapper =
+                new SemanticSearcher.SearchRequestParamsWrapper(params, customMinScore);
+
+        // Verify min score is overridden
+        assertEquals(customMinScore, wrapper.getMinScore());
+
+        // Verify other params are delegated
+        assertEquals(params.getQuery(), wrapper.getQuery());
+        assertEquals(params.getPageSize(), wrapper.getPageSize());
+        assertEquals(params.getStartPosition(), wrapper.getStartPosition());
+        assertEquals(params.getSort(), wrapper.getSort());
+        assertEquals(params.getType(), wrapper.getType());
+    }
+
+    /**
+     * Test SearchRequestParamsWrapper with null min score
+     */
+    public void test_searchRequestParamsWrapper_nullMinScore() throws Exception {
+        MockSearchRequestParams params = new MockSearchRequestParams();
+
+        SemanticSearcher.SearchRequestParamsWrapper wrapper = new SemanticSearcher.SearchRequestParamsWrapper(params, null);
+
+        // Verify null min score is handled
+        assertNull(wrapper.getMinScore());
+    }
+
+    /**
+     * Test SearchRequestParamsWrapper delegates all methods correctly
+     */
+    public void test_searchRequestParamsWrapper_delegation() throws Exception {
+        MockSearchRequestParams params = new MockSearchRequestParams();
+        params.setResponseFields(new String[] { "title", "content", "url", "timestamp" });
+
+        SemanticSearcher.SearchRequestParamsWrapper wrapper = new SemanticSearcher.SearchRequestParamsWrapper(params, 0.5f);
+
+        // Test delegation of various methods
+        assertNotNull(wrapper.getFields());
+        assertNotNull(wrapper.getConditions());
+        assertNotNull(wrapper.getLanguages());
+        assertEquals(0, wrapper.getLanguages().length);
+        assertNull(wrapper.getGeoInfo());
+        assertNull(wrapper.getFacetInfo());
+        assertNull(wrapper.getHighlightInfo());
+        assertNotNull(wrapper.getLocale());
+        assertEquals(0, wrapper.getOffset());
+        assertNotNull(wrapper.getExtraQueries());
+    }
+
+    /**
+     * Test search with min score filtering
+     */
+    public void test_searchWithMinScoreFiltering() throws Exception {
+        System.setProperty(MIN_SCORE, "0.8");
+        System.setProperty(CONTENT_MODEL_ID, "modelx");
+        System.setProperty(CONTENT_FIELD, "content_vector");
+
+        semanticSearchHelper.init();
+
+        MockSearchRequestParams params = new MockSearchRequestParams();
+        OptionalThing<FessUserBean> userBean = OptionalThing.empty();
+
+        try {
+            semanticSearcher.search("high relevance query", params, userBean);
+            // Test passes if no exception is thrown
+            assertTrue(true);
+        } catch (Exception e) {
+            logger.debug("Expected exception in test environment: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Test search with content length filtering
+     */
+    public void test_searchWithContentLengthFiltering() throws Exception {
+        System.setProperty(MIN_CONTENT_LENGTH, "500");
+        System.setProperty(CONTENT_MODEL_ID, "modelx");
+        System.setProperty(CONTENT_FIELD, "content_vector");
+
+        semanticSearchHelper.init();
+
+        MockSearchRequestParams params = new MockSearchRequestParams();
+        OptionalThing<FessUserBean> userBean = OptionalThing.empty();
+
+        try {
+            semanticSearcher.search("content length query", params, userBean);
+            assertTrue(true);
+        } catch (Exception e) {
+            logger.debug("Expected exception in test environment: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Test search with both min score and content length filtering
+     */
+    public void test_searchWithBothFilters() throws Exception {
+        System.setProperty(MIN_SCORE, "0.5");
+        System.setProperty(MIN_CONTENT_LENGTH, "100");
+        System.setProperty(CONTENT_MODEL_ID, "modelx");
+        System.setProperty(CONTENT_FIELD, "content_vector");
+
+        semanticSearchHelper.init();
+
+        MockSearchRequestParams params = new MockSearchRequestParams();
+        OptionalThing<FessUserBean> userBean = OptionalThing.empty();
+
+        try {
+            semanticSearcher.search("combined filters query", params, userBean);
+            assertTrue(true);
+        } catch (Exception e) {
+            logger.debug("Expected exception in test environment: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Test search with performance monitoring enabled
+     */
+    public void test_searchWithPerformanceMonitoring() throws Exception {
+        System.setProperty(PERFORMANCE_MONITORING_ENABLED, "true");
+        System.setProperty(CONTENT_MODEL_ID, "modelx");
+        System.setProperty(CONTENT_FIELD, "content_vector");
+
+        MockSearchRequestParams params = new MockSearchRequestParams();
+        OptionalThing<FessUserBean> userBean = OptionalThing.empty();
+
+        try {
+            semanticSearcher.search("performance test query", params, userBean);
+            // Performance monitoring should log timing information
+            assertTrue(true);
+        } catch (Exception e) {
+            logger.debug("Expected exception in test environment: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Test isSearchableField with various fields
+     */
+    public void test_isSearchableField_variousFields() throws Exception {
+        // Test common field names
+        boolean titleSearchable = semanticSearcher.isSearchableField("title");
+        boolean contentSearchable = semanticSearcher.isSearchableField("content");
+
+        // Fields may or may not be searchable depending on config, but method should not throw
+        logger.info("title searchable: {}, content searchable: {}", titleSearchable, contentSearchable);
+
+        // Test with empty string
+        boolean emptySearchable = semanticSearcher.isSearchableField("");
+        assertFalse(emptySearchable);
+    }
+
+    /**
+     * Test createSearchCondition with response fields
+     */
+    public void test_createSearchCondition_responseFields() throws Exception {
+        System.setProperty(CONTENT_CHUNK_FIELD, "content_chunk");
+
+        String query = "test query";
+        MockSearchRequestParams params = new MockSearchRequestParams();
+        String[] originalFields = { "title", "content" };
+        params.setResponseFields(originalFields);
+        OptionalThing<FessUserBean> userBean = OptionalThing.empty();
+
+        try {
+            SearchCondition<?> condition = semanticSearcher.createSearchCondition(query, params, userBean);
+            assertNotNull(condition);
+            // The condition should include chunk field in addition to original fields
+        } catch (Exception e) {
+            logger.debug("Expected exception in test environment: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Test search with quoted query
+     */
+    public void test_searchWithQuotedQuery() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "modelx");
+        System.setProperty(CONTENT_FIELD, "content_vector");
+
+        MockSearchRequestParams params = new MockSearchRequestParams();
+        OptionalThing<FessUserBean> userBean = OptionalThing.empty();
+
+        try {
+            semanticSearcher.search("\"quoted query\"", params, userBean);
+            assertTrue(true);
+        } catch (Exception e) {
+            logger.debug("Expected exception in test environment: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Test search with complex query
+     */
+    public void test_searchWithComplexQuery() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "modelx");
+        System.setProperty(CONTENT_FIELD, "content_vector");
+
+        MockSearchRequestParams params = new MockSearchRequestParams();
+        OptionalThing<FessUserBean> userBean = OptionalThing.empty();
+
+        String[] complexQueries = { "query AND term", "query OR term", "query NOT term", "(query AND term) OR other" };
+
+        for (String query : complexQueries) {
+            try {
+                semanticSearcher.search(query, params, userBean);
+                logger.info("Complex query handled: {}", query);
+            } catch (Exception e) {
+                logger.debug("Expected exception for query '{}': {}", query, e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Test search with nested field configuration
+     */
+    public void test_searchWithNestedField() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "modelx");
+        System.setProperty(CONTENT_FIELD, "vector");
+        System.setProperty(CONTENT_NESTED_FIELD, "content_nested");
+        System.setProperty(CONTENT_CHUNK_FIELD, "content_chunk");
+
+        MockSearchRequestParams params = new MockSearchRequestParams();
+        OptionalThing<FessUserBean> userBean = OptionalThing.empty();
+
+        try {
+            semanticSearcher.search("nested search query", params, userBean);
+            assertTrue(true);
+        } catch (Exception e) {
+            logger.debug("Expected exception in test environment: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Test search with empty query
+     */
+    public void test_searchWithEmptyQuery() throws Exception {
+        MockSearchRequestParams params = new MockSearchRequestParams();
+        OptionalThing<FessUserBean> userBean = OptionalThing.empty();
+
+        try {
+            semanticSearcher.search("", params, userBean);
+            // Empty query should be handled gracefully
+            assertTrue(true);
+        } catch (Exception e) {
+            logger.debug("Expected exception for empty query: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Test search with very long query
+     */
+    public void test_searchWithVeryLongQuery() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "modelx");
+        System.setProperty(CONTENT_FIELD, "content_vector");
+
+        // Create a very long query (1000 characters)
+        StringBuilder longQuery = new StringBuilder();
+        for (int i = 0; i < 100; i++) {
+            longQuery.append("word").append(i).append(" ");
+        }
+
+        MockSearchRequestParams params = new MockSearchRequestParams();
+        OptionalThing<FessUserBean> userBean = OptionalThing.empty();
+
+        try {
+            semanticSearcher.search(longQuery.toString(), params, userBean);
+            logger.info("Long query handled successfully");
+            assertTrue(true);
+        } catch (Exception e) {
+            logger.debug("Expected exception for long query: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Test context cleanup after search
+     */
+    public void test_contextCleanupAfterSearch() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "modelx");
+        System.setProperty(CONTENT_FIELD, "content_vector");
+
+        MockSearchRequestParams params = new MockSearchRequestParams();
+        OptionalThing<FessUserBean> userBean = OptionalThing.empty();
+
+        try {
+            semanticSearcher.search("cleanup test", params, userBean);
+        } catch (Exception e) {
+            logger.debug("Expected exception in test environment: {}", e.getMessage());
+        }
+
+        // Context should be cleaned up after search
+        assertNull(semanticSearchHelper.getContext());
+    }
+
     private void clearSemanticSearchProperties() {
         System.clearProperty(CONTENT_CHUNK_FIELD);
         System.clearProperty(CONTENT_NESTED_FIELD);

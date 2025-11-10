@@ -90,6 +90,167 @@ public class SemanticTermQueryCommandTest extends LastaDiTestCase {
                 "fess");
     }
 
+    /**
+     * Test term query with no semantic context
+     */
+    public void test_executeWithoutContext() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "modelx");
+        System.setProperty(CONTENT_FIELD, "content_vector");
+
+        // Execute without creating context
+        final String text = "search";
+        final QueryContext context = new QueryContext(text, false);
+        final Query query = ComponentUtil.getQueryParser().parse(context.getQueryString());
+        final QueryBuilder builder = queryCommand.execute(context, query, 1.0f);
+
+        // Should fallback to traditional query since no context
+        assertNotNull(builder);
+        logger.info("Without context: {} => {}", text, builder.toString());
+    }
+
+    /**
+     * Test term query with special characters
+     */
+    public void test_executeWithSpecialCharacters() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "modelx");
+        System.setProperty(CONTENT_FIELD, "content_vector");
+
+        assertQueryBuilder(
+                "{\"neural\":{\"content_vector\":{\"query_text\":\"search@test\",\"model_id\":\"modelx\",\"k\":20,\"boost\":1.0}}}",
+                "search@test");
+
+        assertQueryBuilder(
+                "{\"neural\":{\"content_vector\":{\"query_text\":\"test#123\",\"model_id\":\"modelx\",\"k\":20,\"boost\":1.0}}}",
+                "test#123");
+    }
+
+    /**
+     * Test term query with Unicode characters
+     */
+    public void test_executeWithUnicodeCharacters() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "modelx");
+        System.setProperty(CONTENT_FIELD, "content_vector");
+
+        assertQueryBuilder(
+                "{\"neural\":{\"content_vector\":{\"query_text\":\"検索\",\"model_id\":\"modelx\",\"k\":20,\"boost\":1.0}}}", "検索");
+
+        assertQueryBuilder(
+                "{\"neural\":{\"content_vector\":{\"query_text\":\"Москва\",\"model_id\":\"modelx\",\"k\":20,\"boost\":1.0}}}",
+                "Москва");
+    }
+
+    /**
+     * Test multiple sequential queries
+     */
+    public void test_multipleSequentialQueries() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "modelx");
+        System.setProperty(CONTENT_FIELD, "content_vector");
+
+        String[] queries = { "first", "second", "third" };
+
+        for (String queryText : queries) {
+            semanticSearchHelper.createContext(queryText, null, OptionalThing.empty());
+            try {
+                final QueryContext context = new QueryContext(queryText, false);
+                final Query query = ComponentUtil.getQueryParser().parse(context.getQueryString());
+                final QueryBuilder builder = queryCommand.execute(context, query, 1.0f);
+                assertNotNull(builder);
+                logger.info("Query '{}' => {}", queryText, builder.toString());
+            } finally {
+                semanticSearchHelper.closeContext();
+            }
+        }
+    }
+
+    /**
+     * Test term query with nested field configuration
+     */
+    public void test_executeWithNestedField() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "modelx");
+        System.setProperty(CONTENT_FIELD, "vector");
+        System.setProperty("fess.semantic_search.content.nested_field", "content_nested");
+
+        assertQueryBuilder(
+                "{\"nested\":{\"query\":{\"neural\":{\"content_nested.vector\":{\"query_text\":\"test\",\"model_id\":\"modelx\",\"k\":20,\"boost\":1.0}}},\"path\":\"content_nested\",\"score_mode\":\"max\",\"ignore_unmapped\":false}}",
+                "test");
+    }
+
+    /**
+     * Test with different boost values
+     */
+    public void test_executeWithDifferentBoost() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "modelx");
+        System.setProperty(CONTENT_FIELD, "content_vector");
+
+        semanticSearchHelper.createContext("boosted", null, OptionalThing.empty());
+        try {
+            final QueryContext context = new QueryContext("boosted", false);
+            final Query query = ComponentUtil.getQueryParser().parse(context.getQueryString());
+
+            // Test with different boost values
+            final QueryBuilder builder1 = queryCommand.execute(context, query, 1.0f);
+            assertNotNull(builder1);
+            assertTrue(builder1.toString().contains("\"boost\":1.0"));
+
+            final QueryBuilder builder2 = queryCommand.execute(context, query, 2.0f);
+            assertNotNull(builder2);
+            assertTrue(builder2.toString().contains("\"boost\":2.0"));
+        } finally {
+            semanticSearchHelper.closeContext();
+        }
+    }
+
+    /**
+     * Test with very long term
+     */
+    public void test_executeWithLongTerm() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "modelx");
+        System.setProperty(CONTENT_FIELD, "content_vector");
+
+        // Create a very long term (256 characters)
+        StringBuilder longTerm = new StringBuilder();
+        for (int i = 0; i < 256; i++) {
+            longTerm.append('a');
+        }
+
+        semanticSearchHelper.createContext(longTerm.toString(), null, OptionalThing.empty());
+        try {
+            final QueryContext context = new QueryContext(longTerm.toString(), false);
+            final Query query = ComponentUtil.getQueryParser().parse(context.getQueryString());
+            final QueryBuilder builder = queryCommand.execute(context, query, 1.0f);
+            assertNotNull(builder);
+            logger.info("Long term query created successfully");
+        } finally {
+            semanticSearchHelper.closeContext();
+        }
+    }
+
+    /**
+     * Test fallback when model ID is not configured
+     */
+    public void test_fallbackWhenModelNotConfigured() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "");
+        System.setProperty(CONTENT_FIELD, "content_vector");
+
+        // Should fallback to traditional query
+        assertQueryBuilder(
+                "{\"bool\":{\"should\":[{\"match_phrase\":{\"title\":{\"query\":\"test\",\"slop\":0,\"zero_terms_query\":\"NONE\",\"boost\":0.5}}},{\"match_phrase\":{\"content\":{\"query\":\"test\",\"slop\":0,\"zero_terms_query\":\"NONE\",\"boost\":0.05}}},{\"fuzzy\":{\"title\":{\"value\":\"test\",\"fuzziness\":\"AUTO\",\"prefix_length\":0,\"max_expansions\":10,\"transpositions\":true,\"boost\":0.01}}},{\"fuzzy\":{\"content\":{\"value\":\"test\",\"fuzziness\":\"AUTO\",\"prefix_length\":0,\"max_expansions\":10,\"transpositions\":true,\"boost\":0.005}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}",
+                "test");
+    }
+
+    /**
+     * Test with ef_search parameter (v15.3.0+)
+     */
+    public void test_executeWithEfSearchParameter() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "modelx");
+        System.setProperty(CONTENT_FIELD, "content_vector");
+        System.setProperty("fess.semantic_search.content.param.ef_search", "150");
+
+        assertQueryBuilder(
+                "{\"neural\":{\"content_vector\":{\"query_text\":\"search\",\"model_id\":\"modelx\",\"k\":20,\"ef_search\":150,\"boost\":1.0}}}",
+                "search");
+    }
+
     private void assertQueryBuilder(final String expect, final String text) throws Exception {
         semanticSearchHelper.createContext(text, null, OptionalThing.empty());
         try {
