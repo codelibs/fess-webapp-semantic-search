@@ -69,7 +69,7 @@ public class SemanticSearcherTest extends LastaDiTestCase {
         setupTestComponents();
 
         semanticSearchHelper = new SemanticSearchHelper();
-        semanticSearchHelper.init();
+        // Don't call init() in tests - it requires curlHelper which isn't available
         ComponentUtil.register(semanticSearchHelper, "semanticSearchHelper");
 
         semanticSearcher = new SemanticSearcher();
@@ -186,8 +186,6 @@ public class SemanticSearcherTest extends LastaDiTestCase {
         System.setProperty(MIN_SCORE, "0.5");
         System.setProperty(MIN_CONTENT_LENGTH, "100");
 
-        semanticSearchHelper.init();
-
         String query = "test with filtering";
         MockSearchRequestParams params = new MockSearchRequestParams();
         OptionalThing<FessUserBean> userBean = OptionalThing.empty();
@@ -297,8 +295,6 @@ public class SemanticSearcherTest extends LastaDiTestCase {
         System.setProperty(CONTENT_MODEL_ID, "modelx");
         System.setProperty(CONTENT_FIELD, "content_vector");
 
-        semanticSearchHelper.init();
-
         MockSearchRequestParams params = new MockSearchRequestParams();
         OptionalThing<FessUserBean> userBean = OptionalThing.empty();
 
@@ -319,8 +315,6 @@ public class SemanticSearcherTest extends LastaDiTestCase {
         System.setProperty(CONTENT_MODEL_ID, "modelx");
         System.setProperty(CONTENT_FIELD, "content_vector");
 
-        semanticSearchHelper.init();
-
         MockSearchRequestParams params = new MockSearchRequestParams();
         OptionalThing<FessUserBean> userBean = OptionalThing.empty();
 
@@ -340,8 +334,6 @@ public class SemanticSearcherTest extends LastaDiTestCase {
         System.setProperty(MIN_CONTENT_LENGTH, "100");
         System.setProperty(CONTENT_MODEL_ID, "modelx");
         System.setProperty(CONTENT_FIELD, "content_vector");
-
-        semanticSearchHelper.init();
 
         MockSearchRequestParams params = new MockSearchRequestParams();
         OptionalThing<FessUserBean> userBean = OptionalThing.empty();

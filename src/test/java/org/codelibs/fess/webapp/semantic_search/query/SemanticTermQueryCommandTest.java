@@ -74,6 +74,10 @@ public class SemanticTermQueryCommandTest extends LastaDiTestCase {
 
     @Override
     public void tearDown() throws Exception {
+        System.clearProperty(CONTENT_MODEL_ID);
+        System.clearProperty(CONTENT_FIELD);
+        System.clearProperty("fess.semantic_search.content.nested_field");
+        System.clearProperty("fess.semantic_search.content.param.ef_search");
         ComponentUtil.setFessConfig(null);
         super.tearDown();
     }
