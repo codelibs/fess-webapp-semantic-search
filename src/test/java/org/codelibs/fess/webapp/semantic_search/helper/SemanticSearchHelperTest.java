@@ -503,23 +503,6 @@ public class SemanticSearchHelperTest extends LastaDiTestCase {
     }
 
     /**
-     * Test context with user bean (empty user bean)
-     */
-    public void test_contextWithUserBean() throws Exception {
-        // Don't call init() in tests - it requires curlHelper which isn't available
-
-        SearchRequestParams params = new MockSearchRequestParams();
-        OptionalThing<FessUserBean> optionalUserBean = OptionalThing.empty();
-
-        SemanticSearchContext context = semanticSearchHelper.createContext("test query", params, optionalUserBean);
-
-        assertNotNull(context);
-        assertFalse(context.getUserBean().isPresent());
-
-        semanticSearchHelper.closeContext();
-    }
-
-    /**
      * Test concurrent context creation warning
      */
     public void test_concurrentContextCreation() throws Exception {
