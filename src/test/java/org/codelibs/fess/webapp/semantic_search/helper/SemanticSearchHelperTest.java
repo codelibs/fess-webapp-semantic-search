@@ -154,48 +154,71 @@ public class SemanticSearchHelperTest extends LastaDiTestCase {
     }
 
     /**
-     * Test configuration loading and property parsing
-     * Note: Configuration values are loaded during init() which requires curlHelper.
-     * These tests verify that System properties can be set correctly.
+     * Test neural query builder with model and field configuration
      */
-    public void test_configurationLoading() throws Exception {
-        // Test min_score configuration
-        System.setProperty(MIN_SCORE, "0.5");
-        assertEquals("0.5", System.getProperty(MIN_SCORE));
+    public void test_neuralQueryBuilderWithConfiguration() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "test-model-123");
+        System.setProperty(CONTENT_FIELD, "test_vector_field");
 
-        // Test min_content_length configuration
-        System.setProperty(MIN_CONTENT_LENGTH, "100");
-        assertEquals("100", System.getProperty(MIN_CONTENT_LENGTH));
+        OptionalThing<QueryBuilder> result = semanticSearchHelper.newNeuralQueryBuilder("semantic search query");
 
-        // Test that properties can be cleared
-        System.clearProperty(MIN_SCORE);
-        System.clearProperty(MIN_CONTENT_LENGTH);
-        assertNull(System.getProperty(MIN_SCORE));
-        assertNull(System.getProperty(MIN_CONTENT_LENGTH));
+        assertTrue(result.isPresent());
+        QueryBuilder builder = result.get();
+        String queryString = builder.toString();
+
+        // Verify the query contains model ID and field name
+        assertTrue(queryString.contains("test-model-123"));
+        assertTrue(queryString.contains("test_vector_field"));
+        assertTrue(queryString.contains("semantic search query"));
     }
 
     /**
-     * Test configuration edge cases and boundary values
-     * Note: This tests System property handling, not the loaded values.
+     * Test neural query builder without configuration returns empty
      */
-    public void test_configurationEdgeCases() throws Exception {
-        // Test zero values
-        System.setProperty(MIN_SCORE, "0.0");
-        System.setProperty(MIN_CONTENT_LENGTH, "0");
-        assertEquals("0.0", System.getProperty(MIN_SCORE));
-        assertEquals("0", System.getProperty(MIN_CONTENT_LENGTH));
+    public void test_neuralQueryBuilderWithoutConfiguration() throws Exception {
+        // Clear configuration
+        System.clearProperty(CONTENT_MODEL_ID);
+        System.clearProperty(CONTENT_FIELD);
 
-        // Test negative values
-        System.setProperty(MIN_SCORE, "-1.0");
-        System.setProperty(MIN_CONTENT_LENGTH, "-1");
-        assertEquals("-1.0", System.getProperty(MIN_SCORE));
-        assertEquals("-1", System.getProperty(MIN_CONTENT_LENGTH));
+        OptionalThing<QueryBuilder> result = semanticSearchHelper.newNeuralQueryBuilder("test query");
 
-        // Test very large values
-        System.setProperty(MIN_SCORE, "999999.99");
-        System.setProperty(MIN_CONTENT_LENGTH, "999999999");
-        assertEquals("999999.99", System.getProperty(MIN_SCORE));
-        assertEquals("999999999", System.getProperty(MIN_CONTENT_LENGTH));
+        assertFalse(result.isPresent());
+    }
+
+    /**
+     * Test neural query builder with nested field configuration
+     */
+    public void test_neuralQueryBuilderWithNestedField() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "nested-model");
+        System.setProperty(CONTENT_FIELD, "vector");
+        System.setProperty(CONTENT_NESTED_FIELD, "content_nested");
+
+        OptionalThing<QueryBuilder> result = semanticSearchHelper.newNeuralQueryBuilder("nested query");
+
+        assertTrue(result.isPresent());
+        String queryString = result.get().toString();
+
+        // Verify nested query structure
+        assertTrue(queryString.contains("nested"));
+        assertTrue(queryString.contains("content_nested"));
+        assertTrue(queryString.contains("vector"));
+    }
+
+    /**
+     * Test neural query builder with ef_search parameter
+     */
+    public void test_neuralQueryBuilderWithEfSearch() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "model-with-ef");
+        System.setProperty(CONTENT_FIELD, "vector_field");
+        System.setProperty(CONTENT_PARAM_EF_SEARCH, "50");
+
+        OptionalThing<QueryBuilder> result = semanticSearchHelper.newNeuralQueryBuilder("ef search test");
+
+        assertTrue(result.isPresent());
+        String queryString = result.get().toString();
+
+        // Verify ef_search is included in the query
+        assertTrue(queryString.contains("ef_search") || queryString.contains("50"));
     }
 
     /**
@@ -253,22 +276,27 @@ public class SemanticSearchHelperTest extends LastaDiTestCase {
     }
 
     /**
-     * Test query rewriting scenarios
+     * Test neural query builder with empty model ID returns empty
      */
-    public void test_queryRewriting() throws Exception {
-        System.setProperty(CONTENT_MODEL_ID, "test-model");
+    public void test_neuralQueryBuilderWithEmptyModelId() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "");
+        System.setProperty(CONTENT_FIELD, "vector_field");
 
-        // Set up query field config with some fields
-        QueryFieldConfig queryFieldConfig = ComponentUtil.getComponent("queryFieldConfig");
-        // This would typically be configured, but for test we'll work with defaults
+        OptionalThing<QueryBuilder> result = semanticSearchHelper.newNeuralQueryBuilder("query text");
 
-        // Skip init() to avoid curlHelper dependency in test environment
+        assertFalse(result.isPresent());
+    }
 
-        // Test various query patterns through the helper's rewrite logic
-        // Note: The rewriteQuery method is protected, so we test it indirectly
-        // The actual rewriting logic depends on QueryParser integration
+    /**
+     * Test neural query builder with empty field returns empty
+     */
+    public void test_neuralQueryBuilderWithEmptyField() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "model-id");
+        System.setProperty(CONTENT_FIELD, "");
 
-        assertTrue(true); // Basic test passed
+        OptionalThing<QueryBuilder> result = semanticSearchHelper.newNeuralQueryBuilder("query text");
+
+        assertFalse(result.isPresent());
     }
 
     /**
@@ -324,82 +352,87 @@ public class SemanticSearchHelperTest extends LastaDiTestCase {
     }
 
     /**
-     * Test new configuration properties (v15.3.0+)
+     * Test neural query builder with nested and non-nested fields
      */
-    public void test_newConfigurationProperties() throws Exception {
-        // Test MMR configuration
-        System.setProperty(MMR_ENABLED, "true");
-        System.setProperty(MMR_LAMBDA, "0.7");
+    public void test_neuralQueryBuilderNestedVsFlat() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "compare-model");
+        System.setProperty(CONTENT_FIELD, "vector");
 
-        // Test batch inference configuration
-        System.setProperty(BATCH_INFERENCE_ENABLED, "true");
+        // Test without nested field (flat structure)
+        System.clearProperty(CONTENT_NESTED_FIELD);
+        OptionalThing<QueryBuilder> flatResult = semanticSearchHelper.newNeuralQueryBuilder("flat query");
+        assertTrue(flatResult.isPresent());
+        String flatQuery = flatResult.get().toString();
+        assertFalse(flatQuery.contains("nested"));
 
-        // Test performance monitoring configuration
-        System.setProperty(PERFORMANCE_MONITORING_ENABLED, "true");
-
-        // These properties should be readable
-        assertEquals("true", System.getProperty(MMR_ENABLED));
-        assertEquals("0.7", System.getProperty(MMR_LAMBDA));
-        assertEquals("true", System.getProperty(BATCH_INFERENCE_ENABLED));
-        assertEquals("true", System.getProperty(PERFORMANCE_MONITORING_ENABLED));
+        // Test with nested field
+        System.setProperty(CONTENT_NESTED_FIELD, "content_nested");
+        OptionalThing<QueryBuilder> nestedResult = semanticSearchHelper.newNeuralQueryBuilder("nested query");
+        assertTrue(nestedResult.isPresent());
+        String nestedQuery = nestedResult.get().toString();
+        assertTrue(nestedQuery.contains("nested"));
+        assertTrue(nestedQuery.contains("content_nested"));
     }
 
     /**
-     * Test default space_type changed to cosinesimil (v15.3.0+)
+     * Test context with different user bean configurations
      */
-    public void test_defaultSpaceTypeIsCosinesimil() throws Exception {
-        // When space_type is not set, it should default to 'cosinesimil'
-        // This is tested indirectly through the mapping rewrite rule
-        // The actual default is in SemanticSearchHelper.java:117
+    public void test_contextWithUserBean() throws Exception {
+        SearchRequestParams params = new MockSearchRequestParams();
 
-        // Verify the constant exists
-        assertNotNull(CONTENT_SPACE_TYPE);
-        assertEquals("fess.semantic_search.content.space_type", CONTENT_SPACE_TYPE);
+        // Test with empty user bean
+        OptionalThing<FessUserBean> emptyUserBean = OptionalThing.empty();
+        SemanticSearchContext context1 = semanticSearchHelper.createContext("query1", params, emptyUserBean);
+        assertNotNull(context1);
+        assertFalse(context1.getUserBean().isPresent());
+        semanticSearchHelper.closeContext();
+
+        // Test with null params (edge case)
+        SemanticSearchContext context2 = semanticSearchHelper.createContext("query2", null, emptyUserBean);
+        assertNotNull(context2);
+        assertEquals("query2", context2.getQuery());
+        assertNull(context2.getParams());
+        semanticSearchHelper.closeContext();
     }
 
     /**
-     * Test chunk size configuration parsing
+     * Test neural query builder creates different instances
      */
-    public void test_chunkSizeConfiguration() throws Exception {
-        System.setProperty(CONTENT_CHUNK_SIZE, "512");
-        // Don't call init() in tests - it requires curlHelper which isn't available
+    public void test_neuralQueryBuilderCreatesNewInstances() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "instance-test-model");
+        System.setProperty(CONTENT_FIELD, "vector");
 
-        // Chunk size should be parsed and available
-        // This is used internally by the helper
-        assertTrue(true); // Test passes if no exception during init
+        OptionalThing<QueryBuilder> result1 = semanticSearchHelper.newNeuralQueryBuilder("first");
+        OptionalThing<QueryBuilder> result2 = semanticSearchHelper.newNeuralQueryBuilder("second");
+
+        assertTrue(result1.isPresent());
+        assertTrue(result2.isPresent());
+
+        // Should create different instances
+        assertNotSame(result1.get(), result2.get());
+
+        // But both should contain the model ID
+        assertTrue(result1.get().toString().contains("instance-test-model"));
+        assertTrue(result2.get().toString().contains("instance-test-model"));
     }
 
     /**
-     * Test chunk size with invalid value
+     * Test neural query builder with Unicode characters
      */
-    public void test_chunkSizeWithInvalidValue() throws Exception {
-        System.setProperty(CONTENT_CHUNK_SIZE, "invalid_size");
-        // Don't call init() in tests - it requires curlHelper which isn't available
+    public void test_neuralQueryBuilderWithUnicode() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "unicode-model");
+        System.setProperty(CONTENT_FIELD, "vector");
 
-        // Should handle invalid chunk size gracefully
-        assertTrue(true);
-    }
+        // Test with Japanese characters
+        OptionalThing<QueryBuilder> result1 = semanticSearchHelper.newNeuralQueryBuilder("検索テスト");
+        assertTrue(result1.isPresent());
 
-    /**
-     * Test HNSW parameter m configuration
-     */
-    public void test_hnswParameterM() throws Exception {
-        System.setProperty(CONTENT_PARAM_M, "32");
-        // Don't call init() in tests - it requires curlHelper which isn't available
+        // Test with mixed languages
+        OptionalThing<QueryBuilder> result2 = semanticSearchHelper.newNeuralQueryBuilder("search 検索 test");
+        assertTrue(result2.isPresent());
 
-        // Parameter should be parsed successfully
-        assertTrue(true);
-    }
-
-    /**
-     * Test HNSW parameter ef_construction
-     */
-    public void test_hnswParameterEfConstruction() throws Exception {
-        System.setProperty(CONTENT_PARAM_EF_CONSTRUCTION, "256");
-        // Don't call init() in tests - it requires curlHelper which isn't available
-
-        // Parameter should be parsed successfully
-        assertTrue(true);
+        assertNotNull(result1.get());
+        assertNotNull(result2.get());
     }
 
     /**
@@ -510,33 +543,38 @@ public class SemanticSearchHelperTest extends LastaDiTestCase {
     }
 
     /**
-     * Test min score with boundary values
+     * Test neural query builder with multiple queries sequentially
      */
-    public void test_minScoreWithBoundaryValues() throws Exception {
-        // Test maximum float value
-        System.setProperty(MIN_SCORE, String.valueOf(Float.MAX_VALUE));
-        assertEquals(String.valueOf(Float.MAX_VALUE), System.getProperty(MIN_SCORE));
+    public void test_neuralQueryBuilderSequential() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "sequential-model");
+        System.setProperty(CONTENT_FIELD, "vector");
 
-        // Test minimum positive float value
-        System.setProperty(MIN_SCORE, String.valueOf(Float.MIN_VALUE));
-        assertEquals(String.valueOf(Float.MIN_VALUE), System.getProperty(MIN_SCORE));
+        // Test multiple queries in sequence
+        String[] queries = {"first query", "second query", "third query"};
 
-        // Test value of 1.0
-        System.setProperty(MIN_SCORE, "1.0");
-        assertEquals("1.0", System.getProperty(MIN_SCORE));
+        for (String query : queries) {
+            OptionalThing<QueryBuilder> result = semanticSearchHelper.newNeuralQueryBuilder(query);
+            assertTrue(result.isPresent());
+            String queryString = result.get().toString();
+            assertTrue(queryString.contains(query));
+            assertTrue(queryString.contains("sequential-model"));
+        }
     }
 
     /**
-     * Test min content length with boundary values
+     * Test neural query builder with special characters in query text
      */
-    public void test_minContentLengthWithBoundaryValues() throws Exception {
-        // Test maximum long value
-        System.setProperty(MIN_CONTENT_LENGTH, String.valueOf(Long.MAX_VALUE));
-        assertEquals(String.valueOf(Long.MAX_VALUE), System.getProperty(MIN_CONTENT_LENGTH));
+    public void test_neuralQueryBuilderWithSpecialChars() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "special-model");
+        System.setProperty(CONTENT_FIELD, "vector");
 
-        // Test value of 1
-        System.setProperty(MIN_CONTENT_LENGTH, "1");
-        assertEquals("1", System.getProperty(MIN_CONTENT_LENGTH));
+        // Test with various special characters
+        String queryWithChars = "query with @#$% chars";
+        OptionalThing<QueryBuilder> result = semanticSearchHelper.newNeuralQueryBuilder(queryWithChars);
+
+        assertTrue(result.isPresent());
+        // Query should be created even with special characters
+        assertNotNull(result.get());
     }
 
     /**
@@ -609,27 +647,54 @@ public class SemanticSearchHelperTest extends LastaDiTestCase {
     }
 
     /**
-     * Test MMR (Maximal Marginal Relevance) configuration
+     * Test context lifecycle: create -> get -> close
      */
-    public void test_mmrConfiguration() throws Exception {
-        System.setProperty(MMR_ENABLED, "true");
-        System.setProperty(MMR_LAMBDA, "0.5");
-        // Don't call init() in tests - it requires curlHelper which isn't available
+    public void test_contextLifecycle() throws Exception {
+        SearchRequestParams params = new MockSearchRequestParams();
+        OptionalThing<FessUserBean> userBean = OptionalThing.empty();
 
-        // MMR should be configurable for diversity in results
-        assertEquals("true", System.getProperty(MMR_ENABLED));
-        assertEquals("0.5", System.getProperty(MMR_LAMBDA));
+        // Initially no context
+        assertNull(semanticSearchHelper.getContext());
+
+        // Create context
+        SemanticSearchContext context1 = semanticSearchHelper.createContext("lifecycle query", params, userBean);
+        assertNotNull(context1);
+        assertEquals("lifecycle query", context1.getQuery());
+
+        // Get context returns the same instance
+        SemanticSearchContext context2 = semanticSearchHelper.getContext();
+        assertSame(context1, context2);
+
+        // Close context
+        semanticSearchHelper.closeContext();
+        assertNull(semanticSearchHelper.getContext());
+
+        // Can create new context after closing
+        SemanticSearchContext context3 = semanticSearchHelper.createContext("new query", params, userBean);
+        assertNotNull(context3);
+        assertEquals("new query", context3.getQuery());
+
+        // Clean up
+        semanticSearchHelper.closeContext();
     }
 
     /**
-     * Test batch inference configuration
+     * Test neural query builder with long query text
      */
-    public void test_batchInferenceConfiguration() throws Exception {
-        System.setProperty(BATCH_INFERENCE_ENABLED, "true");
-        // Don't call init() in tests - it requires curlHelper which isn't available
+    public void test_neuralQueryBuilderWithLongText() throws Exception {
+        System.setProperty(CONTENT_MODEL_ID, "long-text-model");
+        System.setProperty(CONTENT_FIELD, "vector");
 
-        // Batch inference should be configurable
-        assertEquals("true", System.getProperty(BATCH_INFERENCE_ENABLED));
+        // Create a reasonably long query (not excessively long to avoid parser issues)
+        StringBuilder longQuery = new StringBuilder();
+        for (int i = 0; i < 20; i++) {
+            longQuery.append("word").append(i).append(" ");
+        }
+
+        OptionalThing<QueryBuilder> result = semanticSearchHelper.newNeuralQueryBuilder(longQuery.toString().trim());
+
+        assertTrue(result.isPresent());
+        assertNotNull(result.get());
     }
 
     private void clearSemanticSearchProperties() {
