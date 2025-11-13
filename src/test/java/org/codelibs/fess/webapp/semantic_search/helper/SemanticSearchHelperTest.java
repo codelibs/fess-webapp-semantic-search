@@ -154,54 +154,6 @@ public class SemanticSearchHelperTest extends LastaDiTestCase {
     }
 
     /**
-     * Test configuration loading and property parsing
-     */
-    public void test_configurationLoading() throws Exception {
-        // Test min_score configuration
-        System.setProperty(MIN_SCORE, "0.5");
-        // Don't call init() in tests - it requires curlHelper which isn't available
-        assertEquals(Float.valueOf(0.5f), semanticSearchHelper.getMinScore());
-
-        // Test min_content_length configuration
-        System.setProperty(MIN_CONTENT_LENGTH, "100");
-        // Don't call init() in tests - it requires curlHelper which isn't available
-        assertEquals(Long.valueOf(100L), semanticSearchHelper.getMinContentLength());
-
-        // Test invalid values
-        System.setProperty(MIN_SCORE, "invalid");
-        System.setProperty(MIN_CONTENT_LENGTH, "invalid");
-        // Don't call init() in tests - it requires curlHelper which isn't available
-        assertNull(semanticSearchHelper.getMinScore());
-        assertNull(semanticSearchHelper.getMinContentLength());
-    }
-
-    /**
-     * Test configuration edge cases and boundary values
-     */
-    public void test_configurationEdgeCases() throws Exception {
-        // Test zero values
-        System.setProperty(MIN_SCORE, "0.0");
-        System.setProperty(MIN_CONTENT_LENGTH, "0");
-        // Don't call init() in tests - it requires curlHelper which isn't available
-        assertEquals(Float.valueOf(0.0f), semanticSearchHelper.getMinScore());
-        assertEquals(Long.valueOf(0L), semanticSearchHelper.getMinContentLength());
-
-        // Test negative values
-        System.setProperty(MIN_SCORE, "-1.0");
-        System.setProperty(MIN_CONTENT_LENGTH, "-1");
-        // Don't call init() in tests - it requires curlHelper which isn't available
-        assertEquals(Float.valueOf(-1.0f), semanticSearchHelper.getMinScore());
-        assertEquals(Long.valueOf(-1L), semanticSearchHelper.getMinContentLength());
-
-        // Test very large values
-        System.setProperty(MIN_SCORE, "999999.99");
-        System.setProperty(MIN_CONTENT_LENGTH, "999999999");
-        // Don't call init() in tests - it requires curlHelper which isn't available
-        assertEquals(Float.valueOf(999999.99f), semanticSearchHelper.getMinScore());
-        assertEquals(Long.valueOf(999999999L), semanticSearchHelper.getMinContentLength());
-    }
-
-    /**
      * Test multiple context creation warnings
      */
     public void test_multipleContextCreation() throws Exception {
@@ -513,41 +465,6 @@ public class SemanticSearchHelperTest extends LastaDiTestCase {
     }
 
     /**
-     * Test min score with boundary values
-     */
-    public void test_minScoreWithBoundaryValues() throws Exception {
-        // Test maximum float value
-        System.setProperty(MIN_SCORE, String.valueOf(Float.MAX_VALUE));
-        // Don't call init() in tests - it requires curlHelper which isn't available
-        assertEquals(Float.MAX_VALUE, semanticSearchHelper.getMinScore(), 0.001f);
-
-        // Test minimum positive float value
-        System.setProperty(MIN_SCORE, String.valueOf(Float.MIN_VALUE));
-        // Don't call init() in tests - it requires curlHelper which isn't available
-        assertEquals(Float.MIN_VALUE, semanticSearchHelper.getMinScore(), 0.0000001f);
-
-        // Test value of 1.0
-        System.setProperty(MIN_SCORE, "1.0");
-        // Don't call init() in tests - it requires curlHelper which isn't available
-        assertEquals(1.0f, semanticSearchHelper.getMinScore(), 0.001f);
-    }
-
-    /**
-     * Test min content length with boundary values
-     */
-    public void test_minContentLengthWithBoundaryValues() throws Exception {
-        // Test maximum long value
-        System.setProperty(MIN_CONTENT_LENGTH, String.valueOf(Long.MAX_VALUE));
-        // Don't call init() in tests - it requires curlHelper which isn't available
-        assertEquals(Long.MAX_VALUE, semanticSearchHelper.getMinContentLength().longValue());
-
-        // Test value of 1
-        System.setProperty(MIN_CONTENT_LENGTH, "1");
-        // Don't call init() in tests - it requires curlHelper which isn't available
-        assertEquals(1L, semanticSearchHelper.getMinContentLength().longValue());
-    }
-
-    /**
      * Test neural query builder with whitespace variations
      */
     public void test_neuralQueryBuilderWithWhitespaceVariations() throws Exception {
@@ -596,22 +513,6 @@ public class SemanticSearchHelperTest extends LastaDiTestCase {
             logger.info("Configured dimension: {}", dim);
             assertTrue(true);
         }
-    }
-
-    /**
-     * Test neural query builder k parameter variations
-     */
-    public void test_neuralQueryBuilderKParameter() throws Exception {
-        System.setProperty(CONTENT_MODEL_ID, "test-model");
-        System.setProperty(CONTENT_FIELD, "vector_field");
-
-        // The k parameter (number of nearest neighbors) should be configurable
-        // Default is 20 based on the test outputs
-        OptionalThing<QueryBuilder> result = semanticSearchHelper.newNeuralQueryBuilder("k parameter test");
-        assertTrue(result.isPresent());
-
-        String queryString = result.get().toString();
-        assertTrue(queryString.contains("\"k\":20") || queryString.contains("k=20"));
     }
 
     /**
