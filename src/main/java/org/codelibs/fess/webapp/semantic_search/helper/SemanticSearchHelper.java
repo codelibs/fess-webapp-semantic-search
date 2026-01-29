@@ -372,21 +372,14 @@ public class SemanticSearchHelper {
                 final String vectorField = nestedField + "." + field;
                 final InnerHitBuilder innerHit =
                         new InnerHitBuilder(nestedField).setSize(chunkSize).setFetchSourceContext(new FetchSourceContext(false));
-                final NeuralQueryBuilder.Builder builder = new NeuralQueryBuilder.Builder()
-                        .modelId(modelId)
-                        .field(vectorField)
-                        .query(text)
-                        .k(k);
+                final NeuralQueryBuilder.Builder builder =
+                        new NeuralQueryBuilder.Builder().modelId(modelId).field(vectorField).query(text).k(k);
                 if (efSearch != null) {
                     builder.efSearch(efSearch);
                 }
                 return OptionalThing.of(QueryBuilders.nestedQuery(nestedField, builder.build(), ScoreMode.Max).innerHit(innerHit));
             }
-            final NeuralQueryBuilder.Builder builder = new NeuralQueryBuilder.Builder()
-                    .modelId(modelId)
-                    .field(field)
-                    .query(text)
-                    .k(k);
+            final NeuralQueryBuilder.Builder builder = new NeuralQueryBuilder.Builder().modelId(modelId).field(field).query(text).k(k);
             if (efSearch != null) {
                 builder.efSearch(efSearch);
             }

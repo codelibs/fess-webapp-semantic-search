@@ -314,19 +314,11 @@ public class NeuralQueryBuilderTest extends TestCase {
      * Test equality with ef_search parameter
      */
     public void test_equalityWithEfSearch() throws Exception {
-        NeuralQueryBuilder query1 = new NeuralQueryBuilder.Builder().field("vector1")
-                .query("test query")
-                .modelId("model1")
-                .k(10)
-                .efSearch(100)
-                .build();
+        NeuralQueryBuilder query1 =
+                new NeuralQueryBuilder.Builder().field("vector1").query("test query").modelId("model1").k(10).efSearch(100).build();
 
-        NeuralQueryBuilder query2 = new NeuralQueryBuilder.Builder().field("vector1")
-                .query("test query")
-                .modelId("model1")
-                .k(10)
-                .efSearch(100)
-                .build();
+        NeuralQueryBuilder query2 =
+                new NeuralQueryBuilder.Builder().field("vector1").query("test query").modelId("model1").k(10).efSearch(100).build();
 
         NeuralQueryBuilder query3 = new NeuralQueryBuilder.Builder().field("vector1")
                 .query("test query")
