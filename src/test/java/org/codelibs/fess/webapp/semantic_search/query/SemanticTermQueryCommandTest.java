@@ -29,10 +29,11 @@ import org.codelibs.fess.query.parser.QueryParser;
 import org.codelibs.fess.util.ComponentUtil;
 import org.codelibs.fess.webapp.semantic_search.helper.SemanticSearchHelper;
 import org.dbflute.optional.OptionalThing;
-import org.dbflute.utflute.lastadi.LastaDiTestCase;
+import org.codelibs.fess.webapp.semantic_search.UnitWebappTestCase;
+import org.junit.jupiter.api.TestInfo;
 import org.opensearch.index.query.QueryBuilder;
 
-public class SemanticTermQueryCommandTest extends LastaDiTestCase {
+public class SemanticTermQueryCommandTest extends UnitWebappTestCase {
     private static final Logger logger = LogManager.getLogger(SemanticTermQueryCommandTest.class);
 
     private SemanticTermQueryCommand queryCommand;
@@ -45,8 +46,8 @@ public class SemanticTermQueryCommandTest extends LastaDiTestCase {
     }
 
     @Override
-    public void setUp() throws Exception {
-        super.setUp();
+    public void setUp(TestInfo testInfo) throws Exception {
+        super.setUp(testInfo);
 
         System.setProperty(CONTENT_MODEL_ID, "");
         System.setProperty(CONTENT_FIELD, "");
@@ -73,9 +74,9 @@ public class SemanticTermQueryCommandTest extends LastaDiTestCase {
     }
 
     @Override
-    public void tearDown() throws Exception {
+    public void tearDown(TestInfo testInfo) throws Exception {
         ComponentUtil.setFessConfig(null);
-        super.tearDown();
+        super.tearDown(testInfo);
     }
 
     public void test_execute() throws Exception {

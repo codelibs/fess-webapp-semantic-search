@@ -29,10 +29,11 @@ import org.codelibs.fess.query.parser.QueryParser;
 import org.codelibs.fess.util.ComponentUtil;
 import org.codelibs.fess.webapp.semantic_search.helper.SemanticSearchHelper.SemanticSearchContext;
 import org.dbflute.optional.OptionalThing;
-import org.dbflute.utflute.lastadi.LastaDiTestCase;
+import org.codelibs.fess.webapp.semantic_search.UnitWebappTestCase;
+import org.junit.jupiter.api.TestInfo;
 import org.opensearch.index.query.QueryBuilder;
 
-public class SemanticSearchHelperTest extends LastaDiTestCase {
+public class SemanticSearchHelperTest extends UnitWebappTestCase {
     private static final Logger logger = LogManager.getLogger(SemanticSearchHelperTest.class);
 
     private SemanticSearchHelper semanticSearchHelper;
@@ -43,8 +44,8 @@ public class SemanticSearchHelperTest extends LastaDiTestCase {
     }
 
     @Override
-    public void setUp() throws Exception {
-        super.setUp();
+    public void setUp(TestInfo testInfo) throws Exception {
+        super.setUp(testInfo);
 
         // Clear all system properties to start fresh
         clearSemanticSearchProperties();
@@ -57,10 +58,10 @@ public class SemanticSearchHelperTest extends LastaDiTestCase {
     }
 
     @Override
-    public void tearDown() throws Exception {
+    public void tearDown(TestInfo testInfo) throws Exception {
         clearSemanticSearchProperties();
         ComponentUtil.setFessConfig(null);
-        super.tearDown();
+        super.tearDown(testInfo);
     }
 
     /**
