@@ -39,6 +39,7 @@ import org.codelibs.fess.util.ComponentUtil;
 import org.codelibs.fess.webapp.semantic_search.helper.SemanticSearchHelper;
 import org.dbflute.optional.OptionalThing;
 import org.codelibs.fess.webapp.semantic_search.UnitWebappTestCase;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.opensearch.action.search.SearchRequest;
 import org.opensearch.action.search.SearchResponse;
@@ -88,6 +89,7 @@ public class SemanticSearcherTest extends UnitWebappTestCase {
     /**
      * Test searcher registration with RankFusionProcessor
      */
+    @Test
     public void test_registration() throws Exception {
         RankFusionProcessor processor = ComponentUtil.getRankFusionProcessor();
         assertNotNull(processor);
@@ -100,6 +102,7 @@ public class SemanticSearcherTest extends UnitWebappTestCase {
     /**
      * Test isSearchableField method with various field configurations
      */
+    @Test
     public void test_isSearchableField() throws Exception {
         QueryFieldConfig queryFieldConfig = ComponentUtil.getQueryFieldConfig();
 
@@ -125,6 +128,7 @@ public class SemanticSearcherTest extends UnitWebappTestCase {
     /**
      * Test parseSearchHit method exists and is callable
      */
+    @Test
     public void test_parseSearchHit_methodExists() throws Exception {
         // Since SearchHit mocking is complex in test environment, we just verify the method exists
         try {
@@ -139,6 +143,7 @@ public class SemanticSearcherTest extends UnitWebappTestCase {
     /**
      * Test createSearchCondition with chunk field configuration
      */
+    @Test
     public void test_createSearchCondition_withChunkField() throws Exception {
         System.setProperty(CONTENT_CHUNK_FIELD, "content_chunks");
 
@@ -163,6 +168,7 @@ public class SemanticSearcherTest extends UnitWebappTestCase {
     /**
      * Test createSearchCondition without chunk field configuration
      */
+    @Test
     public void test_createSearchCondition_noChunkField() throws Exception {
         // Don't set CONTENT_CHUNK_FIELD
 
@@ -181,6 +187,7 @@ public class SemanticSearcherTest extends UnitWebappTestCase {
     /**
      * Test minimum score and content length filtering integration
      */
+    @Test
     public void test_minScoreAndContentLengthIntegration() throws Exception {
         System.setProperty(MIN_SCORE, "0.5");
         System.setProperty(MIN_CONTENT_LENGTH, "100");
@@ -203,6 +210,7 @@ public class SemanticSearcherTest extends UnitWebappTestCase {
     /**
      * Test search with various query patterns
      */
+    @Test
     public void test_searchWithDifferentQueries() throws Exception {
         MockSearchRequestParams params = new MockSearchRequestParams();
         OptionalThing<FessUserBean> userBean = OptionalThing.empty();
@@ -227,6 +235,7 @@ public class SemanticSearcherTest extends UnitWebappTestCase {
     /**
      * Test getSemanticSearchHelper method
      */
+    @Test
     public void test_getSemanticSearchHelper() throws Exception {
         SemanticSearchHelper helper = semanticSearcher.getSemanticSearchHelper();
         assertNotNull(helper);

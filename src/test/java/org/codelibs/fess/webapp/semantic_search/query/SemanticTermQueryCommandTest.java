@@ -30,6 +30,7 @@ import org.codelibs.fess.util.ComponentUtil;
 import org.codelibs.fess.webapp.semantic_search.helper.SemanticSearchHelper;
 import org.dbflute.optional.OptionalThing;
 import org.codelibs.fess.webapp.semantic_search.UnitWebappTestCase;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.opensearch.index.query.QueryBuilder;
 
@@ -79,6 +80,7 @@ public class SemanticTermQueryCommandTest extends UnitWebappTestCase {
         super.tearDown(testInfo);
     }
 
+    @Test
     public void test_execute() throws Exception {
         assertQueryBuilder(
                 "{\"bool\":{\"should\":[{\"match_phrase\":{\"title\":{\"query\":\"fess\",\"slop\":0,\"zero_terms_query\":\"NONE\",\"boost\":0.5}}},{\"match_phrase\":{\"content\":{\"query\":\"fess\",\"slop\":0,\"zero_terms_query\":\"NONE\",\"boost\":0.05}}},{\"fuzzy\":{\"title\":{\"value\":\"fess\",\"fuzziness\":\"AUTO\",\"prefix_length\":0,\"max_expansions\":10,\"transpositions\":true,\"boost\":0.01}}},{\"fuzzy\":{\"content\":{\"value\":\"fess\",\"fuzziness\":\"AUTO\",\"prefix_length\":0,\"max_expansions\":10,\"transpositions\":true,\"boost\":0.005}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}",
