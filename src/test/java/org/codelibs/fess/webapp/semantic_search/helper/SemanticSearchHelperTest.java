@@ -30,6 +30,7 @@ import org.codelibs.fess.util.ComponentUtil;
 import org.codelibs.fess.webapp.semantic_search.helper.SemanticSearchHelper.SemanticSearchContext;
 import org.dbflute.optional.OptionalThing;
 import org.codelibs.fess.webapp.semantic_search.UnitWebappTestCase;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.opensearch.index.query.QueryBuilder;
 
@@ -67,6 +68,7 @@ public class SemanticSearchHelperTest extends UnitWebappTestCase {
     /**
      * Test context management - creation, retrieval, and cleanup
      */
+    @Test
     public void test_contextManagement() throws Exception {
         semanticSearchHelper.init();
 
@@ -94,6 +96,7 @@ public class SemanticSearchHelperTest extends UnitWebappTestCase {
     /**
      * Test neural query builder creation without configuration
      */
+    @Test
     public void test_newNeuralQueryBuilder_noConfiguration() throws Exception {
         semanticSearchHelper.init();
 
@@ -104,6 +107,7 @@ public class SemanticSearchHelperTest extends UnitWebappTestCase {
     /**
      * Test neural query builder creation with basic configuration
      */
+    @Test
     public void test_newNeuralQueryBuilder_basicConfiguration() throws Exception {
         System.setProperty(CONTENT_MODEL_ID, "test-model-id");
         System.setProperty(CONTENT_FIELD, "test_vector_field");
@@ -119,6 +123,7 @@ public class SemanticSearchHelperTest extends UnitWebappTestCase {
     /**
      * Test neural query builder creation with nested field configuration
      */
+    @Test
     public void test_newNeuralQueryBuilder_nestedConfiguration() throws Exception {
         System.setProperty(CONTENT_MODEL_ID, "test-model-id");
         System.setProperty(CONTENT_FIELD, "vector");
@@ -135,6 +140,7 @@ public class SemanticSearchHelperTest extends UnitWebappTestCase {
     /**
      * Test empty or null query text handling
      */
+    @Test
     public void test_newNeuralQueryBuilder_emptyQuery() throws Exception {
         System.setProperty(CONTENT_MODEL_ID, "test-model-id");
         System.setProperty(CONTENT_FIELD, "test_vector_field");
@@ -157,6 +163,7 @@ public class SemanticSearchHelperTest extends UnitWebappTestCase {
     /**
      * Test configuration loading and property parsing
      */
+    @Test
     public void test_configurationLoading() throws Exception {
         // Test min_score configuration
         System.setProperty(MIN_SCORE, "0.5");
@@ -179,6 +186,7 @@ public class SemanticSearchHelperTest extends UnitWebappTestCase {
     /**
      * Test configuration edge cases and boundary values
      */
+    @Test
     public void test_configurationEdgeCases() throws Exception {
         // Test zero values
         System.setProperty(MIN_SCORE, "0.0");
@@ -205,6 +213,7 @@ public class SemanticSearchHelperTest extends UnitWebappTestCase {
     /**
      * Test multiple context creation warnings
      */
+    @Test
     public void test_multipleContextCreation() throws Exception {
         semanticSearchHelper.init();
 
@@ -229,6 +238,7 @@ public class SemanticSearchHelperTest extends UnitWebappTestCase {
     /**
      * Test context closure without existing context
      */
+    @Test
     public void test_closeContextWithoutExistingContext() throws Exception {
         semanticSearchHelper.init();
 
@@ -240,6 +250,7 @@ public class SemanticSearchHelperTest extends UnitWebappTestCase {
     /**
      * Test SemanticSearchContext functionality
      */
+    @Test
     public void test_semanticSearchContext() throws Exception {
         SearchRequestParams params = new MockSearchRequestParams();
         OptionalThing<FessUserBean> optionalUserBean = OptionalThing.empty();
@@ -259,6 +270,7 @@ public class SemanticSearchHelperTest extends UnitWebappTestCase {
     /**
      * Test query rewriting scenarios
      */
+    @Test
     public void test_queryRewriting() throws Exception {
         System.setProperty(CONTENT_MODEL_ID, "test-model");
 
@@ -278,6 +290,7 @@ public class SemanticSearchHelperTest extends UnitWebappTestCase {
     /**
      * Test ef_search parameter configuration (v15.3.0+)
      */
+    @Test
     public void test_efSearchConfiguration() throws Exception {
         System.setProperty(CONTENT_MODEL_ID, "test-model-id");
         System.setProperty(CONTENT_FIELD, "test_vector_field");
@@ -294,6 +307,7 @@ public class SemanticSearchHelperTest extends UnitWebappTestCase {
     /**
      * Test ef_search parameter with null value (v15.3.0+)
      */
+    @Test
     public void test_efSearchWithNullValue() throws Exception {
         System.setProperty(CONTENT_MODEL_ID, "test-model-id");
         System.setProperty(CONTENT_FIELD, "test_vector_field");
@@ -310,6 +324,7 @@ public class SemanticSearchHelperTest extends UnitWebappTestCase {
     /**
      * Test ef_search parameter with invalid value (v15.3.0+)
      */
+    @Test
     public void test_efSearchWithInvalidValue() throws Exception {
         System.setProperty(CONTENT_MODEL_ID, "test-model-id");
         System.setProperty(CONTENT_FIELD, "test_vector_field");
@@ -330,6 +345,7 @@ public class SemanticSearchHelperTest extends UnitWebappTestCase {
     /**
      * Test new configuration properties (v15.3.0+)
      */
+    @Test
     public void test_newConfigurationProperties() throws Exception {
         // Test MMR configuration
         System.setProperty(MMR_ENABLED, "true");
@@ -351,6 +367,7 @@ public class SemanticSearchHelperTest extends UnitWebappTestCase {
     /**
      * Test default space_type changed to cosinesimil (v15.3.0+)
      */
+    @Test
     public void test_defaultSpaceTypeIsCosinesimil() throws Exception {
         // When space_type is not set, it should default to 'cosinesimil'
         // This is tested indirectly through the mapping rewrite rule
