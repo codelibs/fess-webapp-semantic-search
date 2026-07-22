@@ -1,197 +1,222 @@
-# Fess Semantic Search Plugin
+Semantic Search Plugin for Fess
+===============================
 
 [![Java CI with Maven](https://github.com/codelibs/fess-webapp-semantic-search/actions/workflows/maven.yml/badge.svg)](https://github.com/codelibs/fess-webapp-semantic-search/actions/workflows/maven.yml)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/org.codelibs.fess/fess-webapp-semantic-search/badge.svg)](https://maven-badges.herokuapp.com/maven-central/org.codelibs.fess/fess-webapp-semantic-search)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-A powerful semantic search plugin for [Fess](https://fess.codelibs.org/), the open-source enterprise search server. This plugin extends Fess's search capabilities by integrating neural search using OpenSearch's machine learning features and vector similarity search.
+## Overview
 
-## ✨ Features
+This plugin provides `OpenSearchEmbeddingClient`, an embedding provider for the
+content-chunk pipeline built into [Fess](https://fess.codelibs.org/) 15.8 and later.
+It generates text embeddings by calling the OpenSearch ML Commons Predict API
+against a pre-deployed text-embedding model — by default on the **same OpenSearch
+cluster Fess already uses as its search engine**, so no additional inference
+service is needed.
 
-- **Neural Search Integration**: Leverages OpenSearch ML Commons plugin for semantic vector search
-- **Automatic Query Rewriting**: Converts traditional text queries to neural queries when appropriate
-- **Rank Fusion Processing**: Combines traditional and semantic search results for improved relevance
-- **Content Chunking**: Processes long documents in chunks for better semantic matching
-- **Configurable Models**: Supports multiple pre-trained transformer models from HuggingFace
-- **Seamless Integration**: Works as a drop-in plugin for existing Fess installations
+Everything else lives in Fess itself: Fess core chunks document content, calls
+the embedding provider selected by `content_chunker.embedding.name`, indexes the
+chunk vectors (Content Chunk Vector Indexer job), uses them for RAG-chat chunk
+selection, and blends semantic results into search via its rank-fusion searcher
+(`SemanticChunkSearcher`, with automatic exact/ANN k-NN selection). This plugin's
+sole job is to turn text into vectors; **it does nothing at search time itself**.
 
-## 🚀 Quick Start
+Since exactly one embedding client is active at a time, setting
+`content_chunker.embedding.name=opensearch` selects this plugin (over e.g. the
+Ollama provider from fess-llm-ollama).
 
-### Prerequisites
+> [!IMPORTANT]
+> Version 15.8.0 is a complete rewrite. The former neural-search implementation
+> (query rewriting, `neural_pipeline` ingest pipeline, `content_vector` mappings,
+> `fess.semantic_search.*` properties) has been removed. If you are upgrading
+> from 15.7.x or earlier, read the [Migration](#migration-from-157x-or-earlier)
+> section — the old index keeps running the old ingest pipeline until you detach
+> it or reindex.
 
-- Fess 15.0+ (Full-text Enterprise Search Server)
-- OpenSearch 2.x with ML Commons plugin enabled
-- Docker and Docker Compose (recommended for setup)
+## Download
 
-### 1. Clone and Setup Docker Environment
+See [Maven Repository](https://repo1.maven.org/maven2/org/codelibs/fess/fess-webapp-semantic-search/).
 
-```bash
-git clone https://github.com/codelibs/docker-fess.git
-cd docker-fess/compose
+## Requirements
+
+- Fess 15.8 or later (the `content_chunker` pipeline and the embedding SPI are part of Fess core as of 15.8)
+- OpenSearch 3.x with the `opensearch-ml` (ML Commons) plugin installed as the Fess search engine
+- A registered and **deployed** ML Commons text-embedding model (see [Model Setup](#model-setup))
+- Java 21 or later
+
+## Installation
+
+1. Download the plugin JAR from the Maven Repository
+2. Install it via Admin > Plugin, or place it in `webapp/WEB-INF/plugin/` (Docker: use the `FESS_PLUGINS` environment variable, e.g. `FESS_PLUGINS=fess-webapp-semantic-search:15.8.0`)
+3. Restart Fess
+
+For detailed instructions, see the [Plugin Administration Guide](https://fess.codelibs.org/15.8/admin/plugin-guide.html).
+
+## Model Setup
+
+The plugin does not manage models: the model must be registered and deployed on
+the OpenSearch cluster before Fess can embed anything. `tools/setup.sh` in this
+repository automates all of the steps below (check out the tag matching your
+plugin version and run `./tools/setup.sh http://localhost:9200`; append curl
+options such as `-u admin:password` for a secured cluster).
+
+### 1. Cluster settings
+
+On a cluster without dedicated ML nodes (the common single-node Fess setup),
+allow ML tasks on data nodes:
+
+```
+PUT /_cluster/settings
+{"persistent": {"plugins.ml_commons.only_run_on_ml_node": false}}
 ```
 
-### 2. Configure Plugin in Docker Compose
+Note: model deployment is subject to the ML Commons memory circuit breaker. On a
+heap-pressured cluster (e.g. a node co-located with heavy indexing) the deploy
+step can fail with `DEPLOY_FAILED: "Memory Circuit Breaker is open"`. If that
+happens, free heap or raise `plugins.ml_commons.jvm_heap_memory_threshold` /
+`plugins.ml_commons.native_memory_threshold` (default 85) temporarily.
 
-Add the following line to your `compose.yaml`:
+### 2. Register the model
 
-```yaml
-environment:
-  - "FESS_PLUGINS=fess-webapp-semantic-search:15.1.0"
+Register a pretrained model from the [OpenSearch pretrained model registry](https://docs.opensearch.org/latest/ml-commons-plugin/pretrained-models/):
+
+```
+POST /_plugins/_ml/models/_register
+{
+  "name": "huggingface/sentence-transformers/all-MiniLM-L6-v2",
+  "version": "1.0.2",
+  "model_format": "TORCH_SCRIPT"
+}
 ```
 
-### 3. Start Services
+This returns a `task_id`. Poll `GET /_plugins/_ml/tasks/{task_id}` until
+`"state": "COMPLETED"`; the completed task carries the `model_id`.
 
-```bash
-docker compose -f compose.yaml -f compose-opensearch2.yaml up -d
+### 3. Deploy the model
+
+```
+POST /_plugins/_ml/models/{model_id}/_deploy
 ```
 
-### 4. Initialize ML Models and Pipeline
+Again poll the returned task until `COMPLETED`, then verify with
+`GET /_plugins/_ml/models/{model_id}` that `model_state` is `DEPLOYED`.
+A model that is merely `REGISTERED` is rejected by the Predict API
+("Model not ready yet") — ML Commons does not auto-deploy local models on
+predict. To have models redeployed automatically after a cluster restart,
+consider enabling `plugins.ml_commons.model_auto_redeploy.enable`.
 
-Download and run the setup script:
+## Configuration
 
-```bash
-curl -o setup.sh https://raw.githubusercontent.com/codelibs/fess-webapp-semantic-search/main/tools/setup.sh
-chmod +x setup.sh
-./setup.sh localhost:9200
-```
+Configuration is split across two places, matching Fess core conventions.
 
-The setup script will:
-- Display available pre-trained models
-- Register your selected model in OpenSearch
-- Create the neural search pipeline
-- Provide the configuration settings
+### System properties (Admin > General > System Properties, or `system.properties`)
 
-### 5. Configure Fess
+Shared content-chunker settings, provider-independent:
 
-In Fess Admin Panel (Admin > General > System Properties), add the configuration provided by the setup script:
+| Property | Default | Description |
+|----------|---------|-------------|
+| `content_chunker.enabled` | `false` | Set to `true` to enable the content-chunk pipeline. |
+| `content_chunker.embedding.name` | `ollama` | **Must be set to `opensearch`** to use this plugin — the default selects the Ollama provider. |
+| `content_chunker.embedding.dimension` | (none — **required**) | Embedding vector dimension. Must match the deployed model; there is no auto-detection. E.g. `384` for `all-MiniLM-L6-v2`, `768` for `all-mpnet-base-v2`. |
+| `content_chunker.search.enabled` | `false` | Set to `true` to let Fess's rank-fusion searcher (`SemanticChunkSearcher`) blend chunk-vector k-NN results into search. Requires an index created/reindexed with the chunk-vector mapping. |
+
+### `fess_config.properties`
+
+Provider-specific settings for this plugin:
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `content_chunker.embedding.opensearch.api.url` | (blank) | OpenSearch base URL. When blank, falls back to the search-engine address Fess is already using (`fess.search_engine.http_address`), then `http://localhost:9200`. Usually leave it unset. |
+| `content_chunker.embedding.opensearch.model.id` | (none — **required**) | ML Commons `model_id` of the deployed text-embedding model (printed by `tools/setup.sh`). Re-read on each call, so the model can be swapped without a restart. |
+| `content_chunker.embedding.opensearch.username` | (blank) | Basic-auth username. When blank, falls back to `search_engine.username` — a secured cluster that Fess can already reach needs no extra auth config here. Note: the fallback also applies when `api.url` points at a *different* cluster; set explicit credentials in that case so the search engine's credentials are not sent elsewhere. |
+| `content_chunker.embedding.opensearch.password` | (blank) | Basic-auth password. When blank, falls back to `search_engine.password`. |
+| `content_chunker.embedding.opensearch.timeout` | `60000` | Response/read timeout (ms). |
+| `content_chunker.embedding.opensearch.connect.timeout` | `5000` | TCP connect timeout (ms). |
+| `content_chunker.embedding.opensearch.retry.max` | `3` | Maximum total attempts on retryable HTTP errors (429/500/502/503/504) and connect-time IOExceptions. 429 typically means the ML memory circuit breaker is open. |
+| `content_chunker.embedding.opensearch.retry.base.delay.ms` | `2000` | Base delay (ms) for exponential backoff with ±20% jitter. |
+| `content_chunker.embedding.opensearch.availability.check.interval` | `60` | Interval (seconds) for checking that the model is `DEPLOYED`. |
+| `content_chunker.embedding.opensearch.document.prefix` | (empty) | Prefix prepended to document/chunk texts before embedding. Pretrained OpenSearch models need none; set e.g. `passage: ` for e5-style models. |
+| `content_chunker.embedding.opensearch.query.prefix` | (empty) | Prefix prepended to query texts before embedding (e.g. `query: ` for e5-style models). |
+
+Minimal configuration:
 
 ```properties
-fess.semantic_search.pipeline=neural_pipeline
-fess.semantic_search.content.field=content_vector
-fess.semantic_search.content.dimension=384
-fess.semantic_search.content.method=hnsw
-fess.semantic_search.content.engine=lucene
-fess.semantic_search.content.space_type=cosinesimil
-fess.semantic_search.content.model_id=<your-model-id>
+# System properties (Admin > General > System Properties)
+content_chunker.enabled=true
+content_chunker.embedding.name=opensearch
+content_chunker.embedding.dimension=384
+
+# fess_config.properties
+content_chunker.embedding.opensearch.model.id=<your-model-id>
 ```
 
-#### Optional: Performance Tuning (v15.3.0+)
+## Verification Flow
 
-For better performance, you can add these optional parameters:
+1. Configure the properties above and restart Fess.
+2. Crawl your content as usual.
+3. Enable and run the **Content Chunk Vector Indexer** job (Admin > Scheduler; it is registered but disabled by default). It chunks indexed documents, embeds the chunks through this plugin, and stores the vectors.
+4. To use the vectors at search time, set `content_chunker.search.enabled=true`. Note the chunk-vector k-NN mapping is spliced in only at **index creation** — on an index created before this configuration was in place, run a reindex via Admin > Maintenance first.
+5. Check `fess.log`/`fess-chunk.log` for embedding activity; a misconfigured dimension or an undeployed model is reported there.
 
-```properties
-# HNSW search-time parameter (higher = better recall, slower search)
-fess.semantic_search.content.param.ef_search=100
+## Remote (Connector-Based) Models and Non-Goals
 
-# Enable performance monitoring for debugging
-fess.semantic_search.performance.monitoring.enabled=true
+- **Remote models are supported only conditionally.** The plugin calls the model-scoped Predict API (`POST /_plugins/_ml/models/{id}/_predict`) with a `text_docs` input. Remote connector models whose connectors use the standard embedding pre/post-process functions (e.g. `connector.pre_process.openai.embedding`, `.cohere.embedding`, `.default.embedding`) return the same `sentence_embedding` tensor shape and should work unchanged, but this is not guaranteed: connectors with custom Painless scripts or no post-process function return connector-specific output that the plugin rejects. The plugin does not send connector `parameters` bodies.
+- **No model management**: no register/deploy/undeploy or auto-deploy. The model must be pre-deployed by the operator.
+- **No asymmetric-embedding `content_type` parameter**; use the `document.prefix`/`query.prefix` settings for e5-style models instead.
+- **No custom TLS truststore and no auth beyond basic auth** (no AWS SigV4, no API-key headers). HTTPS endpoints work with the JVM default truststore.
+- **No dimension auto-discovery**: `content_chunker.embedding.dimension` is authoritative; a mismatch with the model's reported dimension is only warned about.
+- **One `model.id` per configuration**; no per-request model switching.
 
-# Enable batch inference (requires compatible ML model setup)
-fess.semantic_search.batch_inference.enabled=true
-```
+## Migration from 15.7.x or Earlier
 
-#### Optional: Diversity with MMR (Experimental)
+Plugin versions up to 15.7.x implemented semantic search inside the plugin
+(query rewriting to `neural` queries, a `neural_pipeline` ingest pipeline, and
+`content_vector`/`content_chunk` index mappings). All of that is gone; Fess core
+now owns chunking, ingestion, and semantic rank fusion. To migrate:
 
-To improve result diversity using Maximal Marginal Relevance:
+1. **Remove the old configuration.** The old plugin read `fess.semantic_search.*`
+   keys as raw JVM options, so remove all `-Dfess.semantic_search.*` flags
+   (pipeline, content.field/nested_field/chunk_field, dimension, method,
+   engine, space_type, model_id, min_score, param.*, mmr.*, batch_inference.*,
+   performance.monitoring.*) from `FESS_JAVA_OPTS`/`fess.in.sh`, plus any copies
+   someone placed in Admin > General > System Properties. They are dead keys
+   and only cause confusion.
+2. **Detach the old ingest pipeline from the index.** The old plugin set
+   `default_pipeline=neural_pipeline` as an *index setting*, so the pipeline
+   keeps running on every write even after the plugin jar is removed — and
+   fails the write if the old model is ever undeployed or deleted. Either
+   recreate the index (recommended, see step 3) or unset it explicitly:
+   ```
+   PUT /fess.YYYYMMDD/_settings
+   {"index": {"default_pipeline": null}}
+   ```
+3. **Reindex (recommended: recreate).** The old `content_vector`,
+   `content_chunk`, and `index.knn` artifacts remain as dead weight in the old
+   index, and the new chunk-vector k-NN mapping is only added at index creation.
+   With the new configuration in place (plugin 15.8.0 installed,
+   `content_chunker.*` properties set), run a reindex via Admin > Maintenance so
+   a fresh index is created with the new mapping, then run the Content Chunk
+   Vector Indexer job.
+4. **Optionally clean up cluster-side leftovers**: delete the `neural_pipeline`
+   ingest pipeline (`DELETE /_ingest/pipeline/neural_pipeline`) once no index
+   references it. The registered/deployed embedding model itself is still used
+   by this plugin — keep it.
+5. **Expect different search behavior.** Semantic results are now blended by
+   Fess core's rank-fusion searcher instead of the plugin rewriting your query
+   into a `neural` query. Ranking will differ. Side effects of the old
+   implementation no longer apply: multi-word queries are no longer
+   auto-quoted, and the old "multi-word query + field filter returns HTTP 400,
+   quote the query as a workaround" issue is gone along with the workaround.
 
-```properties
-# Enable MMR
-fess.semantic_search.mmr.enabled=true
-
-# Lambda: 1.0 = only relevance, 0.0 = only diversity, 0.5 = balanced
-fess.semantic_search.mmr.lambda=0.7
-```
-
-### 6. Create Index and Start Crawling
-
-1. Go to Admin > Maintenance and start reindexing
-2. Create your crawling configuration
-3. Start the crawler
-4. Begin semantic searching!
-
-## 📖 Available Models
-
-The plugin supports various pre-trained transformer models:
-
-| Model | Dimension | Description |
-|-------|-----------|-------------|
-| all-MiniLM-L6-v2 | 384 | Fast and efficient, good for general use |
-| all-mpnet-base-v2 | 768 | Higher quality, slower performance |
-| all-distilroberta-v1 | 768 | RoBERTa-based, good performance |
-| msmarco-distilbert-base-tas-b | 768 | Optimized for passage retrieval |
-| multi-qa-MiniLM-L6-cos-v1 | 384 | Specialized for question answering |
-| paraphrase-multilingual-MiniLM-L12-v2 | 384 | Multilingual support |
-
-## ⚙️ Configuration Options
-
-### Core Settings
-
-| Property | Description | Default |
-|----------|-------------|---------|
-| `fess.semantic_search.pipeline` | Neural search pipeline name | - |
-| `fess.semantic_search.content.model_id` | ML model ID in OpenSearch | - |
-| `fess.semantic_search.content.field` | Vector field name | - |
-| `fess.semantic_search.content.dimension` | Vector dimension size | - |
-
-### Advanced Settings
-
-| Property | Description | Default |
-|----------|-------------|---------|
-| `fess.semantic_search.content.method` | Vector search method | `hnsw` |
-| `fess.semantic_search.content.engine` | Vector search engine | `lucene` |
-| `fess.semantic_search.content.space_type` | Distance calculation method | `cosinesimil` |
-| `fess.semantic_search.min_score` | Minimum similarity score | - |
-| `fess.semantic_search.min_content_length` | Minimum content length for processing | - |
-| `fess.semantic_search.content.chunk_size` | Number of chunks to return | `1` |
-
-### HNSW Parameters
-
-| Property | Description | Default |
-|----------|-------------|---------|
-| `fess.semantic_search.content.param.m` | HNSW M parameter (higher = better recall, more memory) | `16` |
-| `fess.semantic_search.content.param.ef_construction` | HNSW ef_construction parameter (higher = better quality, slower indexing) | `100` |
-| `fess.semantic_search.content.param.ef_search` | HNSW ef_search parameter (higher = better recall, slower search) | Not set (OpenSearch default) |
-
-### Performance Tuning (v15.3.0+)
-
-| Property | Description | Default |
-|----------|-------------|---------|
-| `fess.semantic_search.performance.monitoring.enabled` | Enable detailed performance logging | `false` |
-| `fess.semantic_search.batch_inference.enabled` | Enable batch inference for better GPU utilization | `false` |
-
-### Experimental Features (v15.3.0+)
-
-| Property | Description | Default |
-|----------|-------------|---------|
-| `fess.semantic_search.mmr.enabled` | Enable Maximal Marginal Relevance for diversity | `false` |
-| `fess.semantic_search.mmr.lambda` | MMR lambda (1.0=relevance, 0.0=diversity) | `0.5` |
-
-## 🏗️ Architecture
-
-### Core Components
-
-- **SemanticSearchHelper**: Central component managing neural search configuration and model interactions
-- **NeuralQueryBuilder**: Custom OpenSearch query builder for neural/vector search queries  
-- **SemanticPhraseQueryCommand**: Converts phrase queries to neural queries when appropriate
-- **SemanticTermQueryCommand**: Handles term-based semantic search queries
-- **SemanticSearcher**: Extends Fess's DefaultSearcher for rank fusion processing
-
-### Integration Points
-
-- **Query Processing**: Integrates with Fess's QueryParser to rewrite queries for semantic search
-- **Document Processing**: Adds rewrite rules for OpenSearch mapping and settings to support vector fields
-- **Rank Fusion**: Registers as a searcher in Fess's rank fusion processor
-- **DI Container**: Uses LastaDi for dependency injection
-
-## 🔧 Development
+## Development
 
 ### Building from Source
 
 ```bash
-git clone https://github.com/codelibs/fess-webapp-semantic-search.git
-cd fess-webapp-semantic-search
 mvn clean package
 ```
+
+Note: this plugin depends on Fess 15.8.0-SNAPSHOT (the `org.codelibs.fess.embedding` SPI), resolved from the Maven snapshot repository until Fess 15.8.0 is released.
 
 ### Running Tests
 
@@ -199,105 +224,14 @@ mvn clean package
 mvn test
 ```
 
-### Code Quality
-
-```bash
-mvn clean compile javadoc:javadoc
-```
-
-## 📦 Installation Methods
-
-### Maven Repository
-
-The plugin is available from Maven Central:
-
-```xml
-<dependency>
-    <groupId>org.codelibs.fess</groupId>
-    <artifactId>fess-webapp-semantic-search</artifactId>
-    <version>15.1.0</version>
-</dependency>
-```
-
-### Manual Installation
-
-1. Download the JAR from [Maven Repository](https://repo1.maven.org/maven2/org/codelibs/fess/fess-webapp-semantic-search/)
-2. Place it in your Fess webapp/WEB-INF/lib/ directory
-3. Restart Fess
-
-### Plugin Management
-
-See the [Fess Plugin Guide](https://fess.codelibs.org/15.0/admin/plugin-guide.html) for detailed installation instructions.
-
-## 🤝 Contributing
-
-We welcome contributions! 
-
-### Development Setup
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Add tests for new functionality
-5. Run the test suite (`mvn test`)
-6. Commit your changes (`git commit -m 'Add some amazing feature'`)
-7. Push to the branch (`git push origin feature/amazing-feature`)
-8. Open a Pull Request
-
-### Code Style
-
-This project uses:
-- Maven for build management
-- JUnit for testing
-- CheckStyle for code formatting
-- JavaDoc for documentation
-
-## 📄 License
+## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
-## 🔗 Links
+## Links
 
 - [Fess Official Website](https://fess.codelibs.org/)
-- [OpenSearch ML Commons](https://opensearch.org/docs/latest/ml-commons-plugin/)
-- [Docker Fess](https://github.com/codelibs/docker-fess)
+- [OpenSearch ML Commons](https://docs.opensearch.org/latest/ml-commons-plugin/)
+- [OpenSearch Pretrained Models](https://docs.opensearch.org/latest/ml-commons-plugin/pretrained-models/)
 - [Issue Tracker](https://github.com/codelibs/fess-webapp-semantic-search/issues)
-
-## 🚀 OpenSearch 3.3 Optimization (v15.3.0+)
-
-This plugin is optimized for OpenSearch 3.3 with significant performance improvements and new features:
-
-### Key Improvements
-- **Concurrent Segment Search**: Enabled by default, up to 2.5x faster k-NN queries
-- **Improved HNSW**: Default `space_type` changed to `cosinesimil` for better semantic search accuracy
-- **Performance Monitoring**: Optional detailed query performance tracking
-- **Advanced Tuning**: Fine-grained control over HNSW parameters including `ef_search`
-
-### Migration from Earlier Versions
-If upgrading from v15.2.x or earlier:
-1. The default `space_type` has changed from `l2` to `cosinesimil`
-2. To maintain compatibility with existing indices, explicitly set: `fess.semantic_search.content.space_type=l2`
-3. For new deployments, the new default `cosinesimil` is recommended
-
-## 📊 Version Compatibility
-
-| Plugin Version | Fess Version | OpenSearch Version |
-|----------------|--------------|-------------------|
-| 15.3.x | 15.3+ | 3.3.x (recommended) |
-| 15.0.x | 15.0+ | 2.x |
-| 14.9.x | 14.9+ | 2.x |
-
-## 🆘 Support
-
-- **Documentation**: [Fess Documentation](https://fess.codelibs.org/15.0/)
-- **Issues**: [GitHub Issues](https://github.com/codelibs/fess-webapp-semantic-search/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/codelibs/fess-webapp-semantic-search/discussions)
-- **Community**: [Fess Community](https://discuss.codelibs.org/)
-
-## 🙏 Acknowledgments
-
-- [CodeLibs](https://www.codelibs.org/) for developing and maintaining Fess
-- [HuggingFace](https://huggingface.co/) for providing pre-trained transformer models
-- [OpenSearch](https://opensearch.org/) team for ML Commons plugin
-- All contributors who have helped improve this plugin
-
+- [Fess Community](https://discuss.codelibs.org/)
